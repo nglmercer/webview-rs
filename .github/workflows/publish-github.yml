@@ -1,4 +1,4 @@
-name: Publish GitHub
+name: Publish Universal Release
 
 env:
   APP_NAME: webview
@@ -23,11 +23,9 @@ jobs:
     secrets: inherit
 
   github_release:
-    name: Publish to GitHub Releases
+    name: Create Universal Release
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs:
-      - call-build
+    needs: call-build
 
     steps:
       - name: Checkout repository
@@ -46,34 +44,43 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # PASO CLAVE 1: Descargar TODOS los binarios a la carpeta raíz (.)
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-          merge-multiple: true
+          pattern: webview-* # Coincide con el nombre en build.yml
+          path: . # Los descarga AQUÍ MISMO, junto al index.js
+          merge-multiple: true # Aplana las carpetas, dejando solo los archivos .node
 
-      - name: Move artifacts
-        run: bun run artifacts
+      # (Opcional) Listar archivos para que veas en el log que todo está ahí
+      - name: Verify files present
+        run: ls -la *.node index.js
 
-      - name: List packages
-        run: ls -R ./npm
+      # PASO CLAVE 2: Crear un único paquete .tgz GIGANTE con todo
+      # Como 'files' en package.json incluye "*.node", npm pack los meterá todos.
+      - name: Pack Universal Package
+        run: npm pack
         shell: bash
 
+      # PASO CLAVE 3: Subir a GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
-          draft: false
           make_latest: true
           files: |
-            ./npm/*.tgz
+            *.tgz
+            *.node
           body: |
-            ## Release ${{ github.ref_name }}
+            ## Universal Release ${{ github.ref_name }}
 
-            This release includes native bindings for:
-            - Windows (x86_64, i686, ARM64)
-            - macOS (x86_64, ARM64)
-            - Linux (x86_64, ARM64, ARMv7)
-            - Android (ARM64, ARMv7)
+            This release is an **All-in-One** package.
+            The `.tgz` file contains the JS code AND all native binaries for all platforms.
+
+            It supports:
+            - Windows (x64, x86, arm64)
+            - macOS (x64, arm64)
+            - Linux (x64, arm64, armv7)
+            - Android

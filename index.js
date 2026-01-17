@@ -75,8 +75,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-android-arm64')
-        const bindingPackageVersion = require('@webviewjs/webview-android-arm64/package.json').version
+        const binding = require('webview-rs-android-arm64')
+        const bindingPackageVersion = require('webview-rs-android-arm64/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -91,8 +91,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-android-arm-eabi')
-        const bindingPackageVersion = require('@webviewjs/webview-android-arm-eabi/package.json').version
+        const binding = require('webview-rs-android-arm-eabi')
+        const bindingPackageVersion = require('webview-rs-android-arm-eabi/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -112,8 +112,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-win32-x64-gnu')
-        const bindingPackageVersion = require('@webviewjs/webview-win32-x64-gnu/package.json').version
+        const binding = require('webview-rs-win32-x64-gnu')
+        const bindingPackageVersion = require('webview-rs-win32-x64-gnu/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -128,8 +128,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-win32-x64-msvc')
-        const bindingPackageVersion = require('@webviewjs/webview-win32-x64-msvc/package.json').version
+        const binding = require('webview-rs-win32-x64-msvc')
+        const bindingPackageVersion = require('webview-rs-win32-x64-msvc/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -145,8 +145,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-win32-ia32-msvc')
-        const bindingPackageVersion = require('@webviewjs/webview-win32-ia32-msvc/package.json').version
+        const binding = require('webview-rs-win32-ia32-msvc')
+        const bindingPackageVersion = require('webview-rs-win32-ia32-msvc/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -161,8 +161,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-win32-arm64-msvc')
-        const bindingPackageVersion = require('@webviewjs/webview-win32-arm64-msvc/package.json').version
+        const binding = require('webview-rs-win32-arm64-msvc')
+        const bindingPackageVersion = require('webview-rs-win32-arm64-msvc/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -180,8 +180,8 @@ function requireNative() {
       loadErrors.push(e)
     }
     try {
-      const binding = require('@webviewjs/webview-darwin-universal')
-      const bindingPackageVersion = require('@webviewjs/webview-darwin-universal/package.json').version
+      const binding = require('webview-rs-darwin-universal')
+      const bindingPackageVersion = require('webview-rs-darwin-universal/package.json').version
       if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
         throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
       }
@@ -196,8 +196,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-darwin-x64')
-        const bindingPackageVersion = require('@webviewjs/webview-darwin-x64/package.json').version
+        const binding = require('webview-rs-darwin-x64')
+        const bindingPackageVersion = require('webview-rs-darwin-x64/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -212,8 +212,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-darwin-arm64')
-        const bindingPackageVersion = require('@webviewjs/webview-darwin-arm64/package.json').version
+        const binding = require('webview-rs-darwin-arm64')
+        const bindingPackageVersion = require('webview-rs-darwin-arm64/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -232,8 +232,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-freebsd-x64')
-        const bindingPackageVersion = require('@webviewjs/webview-freebsd-x64/package.json').version
+        const binding = require('webview-rs-freebsd-x64')
+        const bindingPackageVersion = require('webview-rs-freebsd-x64/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -248,8 +248,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-freebsd-arm64')
-        const bindingPackageVersion = require('@webviewjs/webview-freebsd-arm64/package.json').version
+        const binding = require('webview-rs-freebsd-arm64')
+        const bindingPackageVersion = require('webview-rs-freebsd-arm64/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -269,8 +269,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-x64-musl')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-x64-musl/package.json').version
+          const binding = require('webview-rs-linux-x64-musl')
+          const bindingPackageVersion = require('webview-rs-linux-x64-musl/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -285,8 +285,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-x64-gnu')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-x64-gnu/package.json').version
+          const binding = require('webview-rs-linux-x64-gnu')
+          const bindingPackageVersion = require('webview-rs-linux-x64-gnu/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -303,8 +303,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-arm64-musl')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-arm64-musl/package.json').version
+          const binding = require('webview-rs-linux-arm64-musl')
+          const bindingPackageVersion = require('webview-rs-linux-arm64-musl/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -319,8 +319,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-arm64-gnu')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-arm64-gnu/package.json').version
+          const binding = require('webview-rs-linux-arm64-gnu')
+          const bindingPackageVersion = require('webview-rs-linux-arm64-gnu/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -337,8 +337,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-arm-musleabihf')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-arm-musleabihf/package.json').version
+          const binding = require('webview-rs-linux-arm-musleabihf')
+          const bindingPackageVersion = require('webview-rs-linux-arm-musleabihf/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -353,8 +353,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-arm-gnueabihf')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-arm-gnueabihf/package.json').version
+          const binding = require('webview-rs-linux-arm-gnueabihf')
+          const bindingPackageVersion = require('webview-rs-linux-arm-gnueabihf/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -371,8 +371,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-loong64-musl')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-loong64-musl/package.json').version
+          const binding = require('webview-rs-linux-loong64-musl')
+          const bindingPackageVersion = require('webview-rs-linux-loong64-musl/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -387,8 +387,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-loong64-gnu')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-loong64-gnu/package.json').version
+          const binding = require('webview-rs-linux-loong64-gnu')
+          const bindingPackageVersion = require('webview-rs-linux-loong64-gnu/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -405,8 +405,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-riscv64-musl')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-riscv64-musl/package.json').version
+          const binding = require('webview-rs-linux-riscv64-musl')
+          const bindingPackageVersion = require('webview-rs-linux-riscv64-musl/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -421,8 +421,8 @@ function requireNative() {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@webviewjs/webview-linux-riscv64-gnu')
-          const bindingPackageVersion = require('@webviewjs/webview-linux-riscv64-gnu/package.json').version
+          const binding = require('webview-rs-linux-riscv64-gnu')
+          const bindingPackageVersion = require('webview-rs-linux-riscv64-gnu/package.json').version
           if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -438,8 +438,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-linux-ppc64-gnu')
-        const bindingPackageVersion = require('@webviewjs/webview-linux-ppc64-gnu/package.json').version
+        const binding = require('webview-rs-linux-ppc64-gnu')
+        const bindingPackageVersion = require('webview-rs-linux-ppc64-gnu/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -454,8 +454,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-linux-s390x-gnu')
-        const bindingPackageVersion = require('@webviewjs/webview-linux-s390x-gnu/package.json').version
+        const binding = require('webview-rs-linux-s390x-gnu')
+        const bindingPackageVersion = require('webview-rs-linux-s390x-gnu/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -474,8 +474,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-openharmony-arm64')
-        const bindingPackageVersion = require('@webviewjs/webview-openharmony-arm64/package.json').version
+        const binding = require('webview-rs-openharmony-arm64')
+        const bindingPackageVersion = require('webview-rs-openharmony-arm64/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -490,8 +490,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-openharmony-x64')
-        const bindingPackageVersion = require('@webviewjs/webview-openharmony-x64/package.json').version
+        const binding = require('webview-rs-openharmony-x64')
+        const bindingPackageVersion = require('webview-rs-openharmony-x64/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -506,8 +506,8 @@ function requireNative() {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@webviewjs/webview-openharmony-arm')
-        const bindingPackageVersion = require('@webviewjs/webview-openharmony-arm/package.json').version
+        const binding = require('webview-rs-openharmony-arm')
+        const bindingPackageVersion = require('webview-rs-openharmony-arm/package.json').version
         if (bindingPackageVersion !== '0.1.4' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.1.4 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -538,7 +538,7 @@ if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
   }
   if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
     try {
-      wasiBinding = require('@webviewjs/webview-wasm32-wasi')
+      wasiBinding = require('webview-rs-wasm32-wasi')
       nativeBinding = wasiBinding
     } catch (err) {
       if (process.env.NAPI_RS_FORCE_WASI) {
