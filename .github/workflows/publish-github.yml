@@ -1,0 +1,79 @@
+name: Publish GitHub
+
+env:
+  APP_NAME: webview
+
+permissions:
+  contents: write
+  id-token: write
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  call-build:
+    name: Call Build Workflow
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+  github_release:
+    name: Publish to GitHub Releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs:
+      - call-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Move artifacts
+        run: bun run artifacts
+
+      - name: List packages
+        run: ls -R ./npm
+        shell: bash
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          make_latest: true
+          files: |
+            ./npm/*.tgz
+          body: |
+            ## Release ${{ github.ref_name }}
+
+            This release includes native bindings for:
+            - Windows (x86_64, i686, ARM64)
+            - macOS (x86_64, ARM64)
+            - Linux (x86_64, ARM64, ARMv7)
+            - Android (ARM64, ARMv7)
