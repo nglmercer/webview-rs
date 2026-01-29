@@ -529,7 +529,11 @@ fn copy_buffer_centered_softbuffer(
 }
 
 /// Copies buffer with scaling for softbuffer (RGBA to ARGB conversion)
-fn copy_buffer_scaled_softbuffer(surface_buffer: &mut [u32], buffer: &[u8], params: CopyBufferParams) {
+fn copy_buffer_scaled_softbuffer(
+  surface_buffer: &mut [u32],
+  buffer: &[u8],
+  params: CopyBufferParams,
+) {
   let CopyBufferParams {
     buffer_width,
     buffer_height,

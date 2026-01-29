@@ -4,6 +4,7 @@
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
+use std::env;
 use std::sync::{Arc, Mutex};
 
 use crate::tao::enums::{
@@ -479,6 +480,7 @@ impl EventLoopBuilder {
         // Force X11 backend by clearing Wayland environment variables
         std::env::remove_var("WAYLAND_DISPLAY");
         // Ensure DISPLAY is set for X11
+        env::set_var("GDK_BACKEND", "x11");
         if std::env::var("DISPLAY").is_err() {
           std::env::set_var("DISPLAY", ":0");
         }
