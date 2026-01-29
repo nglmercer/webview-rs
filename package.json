@@ -1,14 +1,10 @@
 {
-  "name": "webview-rs",
-  "version": "0.1.4",
-  "bin": {
-    "webview": "./cli/index.mjs",
-    "webviewjs": "./cli/index.mjs"
-  },
+  "name": "webview-napi",
+  "version": "0.1.6",
   "description": "Robust cross-platform webview library for Node.js written in Rust. It also works with deno and bun.",
   "main": "./index.js",
   "types": "./index.d.ts",
-  "repository": "https://github.com/nglmercer/webview-rs",
+  "repository": "https://github.com/nglmercer/webview-napi",
   "license": "MIT",
   "type": "module",
   "keywords": [
@@ -104,19 +100,5 @@
     "tabWidth": 2,
     "useTabs": false
   },
-  "packageManager": "bun@1.3.5",
-  "optionalDependencies": {
-    "webview-rs-win32-x64-msvc": "0.1.4",
-    "webview-rs-win32-ia32-msvc": "0.1.4",
-    "webview-rs-win32-arm64-msvc": "0.1.4",
-    "webview-rs-darwin-x64": "0.1.4",
-    "webview-rs-darwin-arm64": "0.1.4",
-    "webview-rs-linux-x64-gnu": "0.1.4",
-    "webview-rs-linux-ia32-gnu": "0.1.4",
-    "webview-rs-linux-arm64-gnu": "0.1.4",
-    "webview-rs-linux-arm-gnueabihf": "0.1.4",
-    "webview-rs-android-arm64": "0.1.4",
-    "webview-rs-android-arm-eabi": "0.1.4",
-    "webview-rs-freebsd-x64": "0.1.4"
-  }
+  "packageManager": "bun@1.3.5"
 }
