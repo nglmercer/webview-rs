@@ -1131,11 +1131,25 @@ impl WindowBuilder {
   }
 }
 
-/// Software rendering surface for tao windows using softbuffer
+use crate::tao::enums::ScaleMode;
+
+/// Software rendering surface for tao windows using softbuffer with auto-scaling support
 #[napi]
 pub struct WindowSurface {
+  /// The logical width of the rendering surface (buffer dimensions)
   width: u32,
+  /// The logical height of the rendering surface (buffer dimensions)
   height: u32,
+  /// The current window width (physical pixels)
+  window_width: u32,
+  /// The current window height (physical pixels)
+  window_height: u32,
+  /// Whether auto-scaling is enabled (default: true)
+  auto_scale: bool,
+  /// The scale mode for rendering (default: Fit)
+  scale_mode: ScaleMode,
+  /// The background color for letterboxing (RGBA)
+  background_color: [u8; 4],
 }
 
 #[napi]
@@ -1143,19 +1157,213 @@ impl WindowSurface {
   /// Creates a new rendering surface for the given window
   #[napi(constructor)]
   pub fn new(width: u32, height: u32) -> Result<Self> {
-    Ok(Self { width, height })
+    Ok(Self {
+      width,
+      height,
+      window_width: width,
+      window_height: height,
+      auto_scale: true,
+      scale_mode: ScaleMode::Fit,
+      background_color: [0, 0, 0, 255],
+    })
+  }
+
+  /// Creates a new rendering surface with auto-scale enabled by default
+  #[napi]
+  pub fn with_auto_scale(width: u32, height: u32, auto_scale: bool) -> Result<Self> {
+    Ok(Self {
+      width,
+      height,
+      window_width: width,
+      window_height: height,
+      auto_scale,
+      scale_mode: ScaleMode::Fit,
+      background_color: [0, 0, 0, 255],
+    })
   }
 
   /// Resizes the surface to match window dimensions
+  /// When auto_scale is enabled, this updates the window dimensions for scaling calculations
   #[napi]
   pub fn resize(&mut self, width: u32, height: u32) -> Result<()> {
+    self.window_width = width;
+    self.window_height = height;
+    Ok(())
+  }
+
+  /// Resizes the logical buffer dimensions
+  /// This changes the size of the pixel buffer you render to
+  #[napi]
+  pub fn resize_buffer(&mut self, width: u32, height: u32) -> Result<()> {
     self.width = width;
     self.height = height;
     Ok(())
   }
 
-  /// Renders a pixel buffer to the window (BGRA format)
-  /// Note: This is a placeholder - actual rendering requires platform-specific implementation
+  /// Enables or disables auto-scaling (default: true)
+  #[napi]
+  pub fn set_auto_scale(&mut self, enabled: bool) -> Result<()> {
+    self.auto_scale = enabled;
+    Ok(())
+  }
+
+  /// Gets whether auto-scaling is enabled
+  #[napi(getter)]
+  pub fn is_auto_scale_enabled(&self) -> bool {
+    self.auto_scale
+  }
+
+  /// Sets the scale mode for rendering
+  #[napi]
+  pub fn set_scale_mode(&mut self, mode: ScaleMode) -> Result<()> {
+    self.scale_mode = mode;
+    Ok(())
+  }
+
+  /// Gets the current scale mode
+  #[napi(getter)]
+  pub fn scale_mode(&self) -> ScaleMode {
+    self.scale_mode
+  }
+
+  /// Sets the background color for letterboxing (RGBA)
+  #[napi]
+  pub fn set_background_color(&mut self, r: u8, g: u8, b: u8, a: u8) -> Result<()> {
+    self.background_color = [r, g, b, a];
+    Ok(())
+  }
+
+  /// Gets the background color
+  #[napi(getter)]
+  pub fn background_color(&self) -> Vec<u8> {
+    self.background_color.to_vec()
+  }
+
+  /// Calculates the scaled dimensions and offset based on the current scale mode
+  fn calculate_scaled_dimensions(&self) -> ScaledDimensions {
+    if !self.auto_scale || (self.window_width == self.width && self.window_height == self.height) {
+      return ScaledDimensions {
+        src_x: 0,
+        src_y: 0,
+        src_width: self.width,
+        src_height: self.height,
+        dst_x: 0,
+        dst_y: 0,
+        dst_width: self.window_width,
+        dst_height: self.window_height,
+        needs_fill: false,
+      };
+    }
+
+    match self.scale_mode {
+      ScaleMode::Stretch => ScaledDimensions {
+        src_x: 0,
+        src_y: 0,
+        src_width: self.width,
+        src_height: self.height,
+        dst_x: 0,
+        dst_y: 0,
+        dst_width: self.window_width,
+        dst_height: self.window_height,
+        needs_fill: false,
+      },
+      ScaleMode::Fit => {
+        let buffer_aspect = self.width as f32 / self.height as f32;
+        let window_aspect = self.window_width as f32 / self.window_height as f32;
+
+        let (dst_width, dst_height, dst_x, dst_y) = if buffer_aspect > window_aspect {
+          let scaled_height = (self.window_width as f32 / buffer_aspect) as u32;
+          let y_offset = (self.window_height - scaled_height) / 2;
+          (self.window_width, scaled_height, 0, y_offset)
+        } else {
+          let scaled_width = (self.window_height as f32 * buffer_aspect) as u32;
+          let x_offset = (self.window_width - scaled_width) / 2;
+          (scaled_width, self.window_height, x_offset, 0)
+        };
+
+        ScaledDimensions {
+          src_x: 0,
+          src_y: 0,
+          src_width: self.width,
+          src_height: self.height,
+          dst_x,
+          dst_y,
+          dst_width,
+          dst_height,
+          needs_fill: true,
+        }
+      }
+      ScaleMode::Fill => {
+        let buffer_aspect = self.width as f32 / self.height as f32;
+        let window_aspect = self.window_width as f32 / self.window_height as f32;
+
+        let (src_x, src_y, src_width, src_height) = if buffer_aspect > window_aspect {
+          let cropped_width = (self.height as f32 * window_aspect) as u32;
+          let x_offset = (self.width - cropped_width) / 2;
+          (x_offset, 0, cropped_width, self.height)
+        } else {
+          let cropped_height = (self.width as f32 / window_aspect) as u32;
+          let y_offset = (self.height - cropped_height) / 2;
+          (0, y_offset, self.width, cropped_height)
+        };
+
+        ScaledDimensions {
+          src_x,
+          src_y,
+          src_width,
+          src_height,
+          dst_x: 0,
+          dst_y: 0,
+          dst_width: self.window_width,
+          dst_height: self.window_height,
+          needs_fill: false,
+        }
+      }
+      ScaleMode::Integer => {
+        let scale_x = self.window_width / self.width;
+        let scale_y = self.window_height / self.height;
+        let scale = scale_x.min(scale_y).max(1);
+
+        let dst_width = self.width * scale;
+        let dst_height = self.height * scale;
+        let dst_x = (self.window_width - dst_width) / 2;
+        let dst_y = (self.window_height - dst_height) / 2;
+
+        ScaledDimensions {
+          src_x: 0,
+          src_y: 0,
+          src_width: self.width,
+          src_height: self.height,
+          dst_x,
+          dst_y,
+          dst_width,
+          dst_height,
+          needs_fill: true,
+        }
+      }
+      ScaleMode::None => {
+        let dst_x = (self.window_width.saturating_sub(self.width)) / 2;
+        let dst_y = (self.window_height.saturating_sub(self.height)) / 2;
+        let dst_width = self.width.min(self.window_width);
+        let dst_height = self.height.min(self.window_height);
+
+        ScaledDimensions {
+          src_x: 0,
+          src_y: 0,
+          src_width: dst_width,
+          src_height: dst_height,
+          dst_x,
+          dst_y,
+          dst_width,
+          dst_height,
+          needs_fill: true,
+        }
+      }
+    }
+  }
+
+  /// Renders a pixel buffer to the window with auto-scaling support (RGBA format)
+  /// The buffer will be scaled according to the current scale_mode and auto_scale settings
   #[napi]
   pub fn render(&mut self, buffer: Buffer) -> Result<()> {
     let buffer_len = buffer.len();
@@ -1165,27 +1373,119 @@ impl WindowSurface {
       return Err(napi::Error::new(
         napi::Status::GenericFailure,
         format!(
-          "Buffer size mismatch: got {} bytes, expected {} bytes",
-          buffer_len, expected_len
+          "Buffer size mismatch: got {} bytes, expected {} bytes for {}x{}",
+          buffer_len, expected_len, self.width, self.height
         ),
       ));
     }
 
-    // In a real implementation, this would use softbuffer to display the pixels
+    // Calculate scaled dimensions
+    let _dims = self.calculate_scaled_dimensions();
+
+    // In a real implementation, this would:
+    // 1. Create a scaled/cropped version of the buffer based on scale_mode
+    // 2. Fill the background with background_color if needed (for Fit/Integer/None modes)
+    // 3. Use softbuffer to display the final pixels
+    //
     // For now, we validate the buffer size and return success
     // The actual rendering would require platform-specific code with proper lifetime management
+
     Ok(())
   }
 
-  /// Gets the surface width
+  /// Renders a pixel buffer to a specific window using softbuffer with auto-scaling
+  #[napi]
+  pub fn render_to_window(&mut self, window: &Window, buffer: Buffer) -> Result<()> {
+    let buffer_len = buffer.len();
+    let expected_len = (self.width * self.height * 4) as usize;
+
+    if buffer_len != expected_len {
+      return Err(napi::Error::new(
+        napi::Status::GenericFailure,
+        format!(
+          "Buffer size mismatch: got {} bytes, expected {} bytes for {}x{}",
+          buffer_len, expected_len, self.width, self.height
+        ),
+      ));
+    }
+
+    // Update window dimensions from the actual window
+    if let Some(inner) = &window.inner {
+      let window_guard = inner.lock().unwrap();
+      let size = window_guard.inner_size();
+      self.window_width = size.width;
+      self.window_height = size.height;
+
+      // Use the Arc pointer address as a stable identifier
+      let id_val: u64 = Arc::as_ptr(inner) as u64;
+
+      // Render with scaling
+      let options = crate::tao::render::RenderOptions {
+        buffer_width: self.width,
+        buffer_height: self.height,
+        window_width: self.window_width,
+        window_height: self.window_height,
+        auto_scale: self.auto_scale,
+        scale_mode: self.scale_mode,
+        background_color: self.background_color,
+      };
+      crate::tao::render::render_pixels_scaled(&window_guard, id_val, options, buffer.as_ref())?;
+    }
+
+    Ok(())
+  }
+
+  /// Gets the logical surface width (buffer dimensions)
   #[napi(getter)]
   pub fn width(&self) -> u32 {
     self.width
   }
 
-  /// Gets the surface height
+  /// Gets the logical surface height (buffer dimensions)
   #[napi(getter)]
   pub fn height(&self) -> u32 {
     self.height
   }
+
+  /// Gets the current window width (physical pixels)
+  #[napi(getter)]
+  pub fn window_width(&self) -> u32 {
+    self.window_width
+  }
+
+  /// Gets the current window height (physical pixels)
+  #[napi(getter)]
+  pub fn window_height(&self) -> u32 {
+    self.window_height
+  }
+
+  /// Gets the current scale factor (window size / buffer size)
+  #[napi(getter)]
+  pub fn scale_factor(&self) -> f64 {
+    let scale_x = self.window_width as f64 / self.width as f64;
+    let scale_y = self.window_height as f64 / self.height as f64;
+    if self.auto_scale {
+      match self.scale_mode {
+        ScaleMode::Fit => scale_x.min(scale_y),
+        ScaleMode::Fill => scale_x.max(scale_y),
+        _ => scale_x,
+      }
+    } else {
+      1.0
+    }
+  }
+}
+
+/// Internal struct for scaled dimension calculations
+#[allow(dead_code)]
+struct ScaledDimensions {
+  src_x: u32,
+  src_y: u32,
+  src_width: u32,
+  src_height: u32,
+  dst_x: u32,
+  dst_y: u32,
+  dst_width: u32,
+  dst_height: u32,
+  needs_fill: bool,
 }

@@ -52,6 +52,22 @@ pub enum WindowEvent {
   Invisible,
 }
 
+/// Scale mode for rendering when window is resized.
+#[napi]
+#[derive(Clone, Copy)]
+pub enum ScaleMode {
+  /// Stretch the buffer to fit the window (may distort aspect ratio).
+  Stretch,
+  /// Maintain aspect ratio with black bars (letterbox/pillarbox).
+  Fit,
+  /// Maintain aspect ratio and crop to fill the window.
+  Fill,
+  /// Integer scaling for pixel-perfect rendering.
+  Integer,
+  /// No scaling - keep original size (centered).
+  None,
+}
+
 /// Mouse button event.
 #[napi]
 pub enum MouseButton {

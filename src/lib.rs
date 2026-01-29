@@ -28,8 +28,8 @@ pub use wry::types::{Result, WebViewId, RGBA};
 // Re-export tao types
 pub use tao::enums::{
   CursorIcon, DeviceEvent, ElementState, Force, Key, KeyCode, KeyLocation, ModifiersState,
-  MouseButton, MouseButtonState, ProgressState, ResizeDirection, StartCause, TaoControlFlow,
-  TaoFullscreenType, TaoTheme, TouchPhase, UserAttentionType, WindowEvent,
+  MouseButton, MouseButtonState, ProgressState, ResizeDirection, ScaleMode, StartCause,
+  TaoControlFlow, TaoFullscreenType, TaoTheme, TouchPhase, UserAttentionType, WindowEvent,
 };
 pub use tao::functions::{available_monitors, primary_monitor, tao_version};
 pub use tao::structs::{

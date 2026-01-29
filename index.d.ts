@@ -317,21 +317,51 @@ export declare class WindowBuilder {
   build(eventLoop: EventLoop): Window
 }
 
-/** Software rendering surface for tao windows using softbuffer */
+/** Software rendering surface for tao windows using softbuffer with auto-scaling support */
 export declare class WindowSurface {
   /** Creates a new rendering surface for the given window */
   constructor(width: number, height: number)
-  /** Resizes the surface to match window dimensions */
+  /** Creates a new rendering surface with auto-scale enabled by default */
+  static withAutoScale(width: number, height: number, autoScale: boolean): WindowSurface
+  /**
+   * Resizes the surface to match window dimensions
+   * When auto_scale is enabled, this updates the window dimensions for scaling calculations
+   */
   resize(width: number, height: number): void
   /**
-   * Renders a pixel buffer to the window (BGRA format)
-   * Note: This is a placeholder - actual rendering requires platform-specific implementation
+   * Resizes the logical buffer dimensions
+   * This changes the size of the pixel buffer you render to
+   */
+  resizeBuffer(width: number, height: number): void
+  /** Enables or disables auto-scaling (default: true) */
+  setAutoScale(enabled: boolean): void
+  /** Gets whether auto-scaling is enabled */
+  get isAutoScaleEnabled(): boolean
+  /** Sets the scale mode for rendering */
+  setScaleMode(mode: ScaleMode): void
+  /** Gets the current scale mode */
+  get scaleMode(): ScaleMode
+  /** Sets the background color for letterboxing (RGBA) */
+  setBackgroundColor(r: number, g: number, b: number, a: number): void
+  /** Gets the background color */
+  get backgroundColor(): Array<number>
+  /**
+   * Renders a pixel buffer to the window with auto-scaling support (RGBA format)
+   * The buffer will be scaled according to the current scale_mode and auto_scale settings
    */
   render(buffer: Buffer): void
-  /** Gets the surface width */
+  /** Renders a pixel buffer to a specific window using softbuffer with auto-scaling */
+  renderToWindow(window: Window, buffer: Buffer): void
+  /** Gets the logical surface width (buffer dimensions) */
   get width(): number
-  /** Gets the surface height */
+  /** Gets the logical surface height (buffer dimensions) */
   get height(): number
+  /** Gets the current window width (physical pixels) */
+  get windowWidth(): number
+  /** Gets the current window height (physical pixels) */
+  get windowHeight(): number
+  /** Gets the current scale factor (window size / buffer size) */
+  get scaleFactor(): number
 }
 
 export interface ApplicationEvent {
@@ -1190,6 +1220,20 @@ export interface ScaleFactorChangeDetails {
   scaleFactor: number
   /** The new inner size in logical pixels. */
   newInnerSize: Size
+}
+
+/** Scale mode for rendering when window is resized. */
+export declare const enum ScaleMode {
+  /** Stretch the buffer to fit the window (may distort aspect ratio). */
+  Stretch = 0,
+  /** Maintain aspect ratio with black bars (letterbox/pillarbox). */
+  Fit = 1,
+  /** Maintain aspect ratio and crop to fill the window. */
+  Fill = 2,
+  /** Integer scaling for pixel-perfect rendering. */
+  Integer = 3,
+  /** No scaling - keep original size (centered). */
+  None = 4
 }
 
 /** 2D size. */

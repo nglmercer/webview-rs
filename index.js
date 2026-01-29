@@ -612,6 +612,7 @@ module.exports.primaryMonitor = nativeBinding.primaryMonitor
 module.exports.ProgressBarStatus = nativeBinding.ProgressBarStatus
 module.exports.ProgressState = nativeBinding.ProgressState
 module.exports.ResizeDirection = nativeBinding.ResizeDirection
+module.exports.ScaleMode = nativeBinding.ScaleMode
 module.exports.StartCause = nativeBinding.StartCause
 module.exports.TaoControlFlow = nativeBinding.TaoControlFlow
 module.exports.TaoFullscreenType = nativeBinding.TaoFullscreenType

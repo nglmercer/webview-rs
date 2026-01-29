@@ -7,9 +7,12 @@
  *
  * This example uses a software renderer that generates RGBA pixel data and
  * displays it using the window's render() method.
+ *
+ * NEW: Auto-scale feature demonstration - the rendering automatically adapts
+ * to window size changes with multiple scale modes (Fit, Fill, Stretch, Integer, None).
  */
 
-import { WindowBuilder, EventLoop, TaoTheme } from '../index.js'
+import { WindowBuilder, EventLoop, TaoTheme, WindowSurface, ScaleMode } from '../index.js'
 import { createLogger } from './logger.js'
 
 const logger = createLogger('TaoRainbowRender')
@@ -235,21 +238,31 @@ class RainbowRenderer {
 }
 
 /**
- * Window manager with integrated rainbow renderer
+ * Window manager with integrated rainbow renderer and auto-scaling support
  */
 class RainbowWindowManager {
   private window: any = null
   private renderer: RainbowRenderer | null = null
+  private surface: WindowSurface | null = null
   private frameCount: number = 0
   private lastFrameTime: number = Date.now()
   private fps: number = 0
   private currentPattern: number = 0
+  private currentScaleMode: number = 0
   private readonly patterns = [
     'horizontal',
     'vertical',
     'radial',
     'wave',
     'spiral'
+  ] as const
+
+  private readonly scaleModes = [
+    { name: 'Fit', mode: ScaleMode.Fit, desc: 'Maintain aspect ratio with black bars' },
+    { name: 'Fill', mode: ScaleMode.Fill, desc: 'Maintain aspect ratio, crop to fill' },
+    { name: 'Stretch', mode: ScaleMode.Stretch, desc: 'Stretch to fill window' },
+    { name: 'Integer', mode: ScaleMode.Integer, desc: 'Pixel-perfect integer scaling' },
+    { name: 'None', mode: ScaleMode.None, desc: 'No scaling, centered' }
   ] as const
 
   /**
@@ -259,9 +272,12 @@ class RainbowWindowManager {
     logger.section('Creating Rainbow Render Window')
     logger.info('This window renders animated rainbow patterns!')
     logger.info('No webview - pure software rendering to pixel buffer')
+    logger.info('')
+    logger.info('🎯 NEW: Auto-scale feature enabled by default!')
+    logger.info('   The rendering automatically adapts to window size changes.')
 
     const builder = new WindowBuilder()
-      .withTitle('🌈 Rainbow Render - Tao Only')
+      .withTitle('🌈 Rainbow Render - Tao Only (Auto-Scale Demo)')
       .withInnerSize(800, 600)
       .withPosition(100, 100)
       .withResizable(true)
@@ -271,15 +287,30 @@ class RainbowWindowManager {
       .withTheme(TaoTheme.Dark)
 
     this.window = builder.build(eventLoop)
-    
-    // Initialize renderer with window size
+
+    // Initialize renderer with fixed buffer size (logical resolution)
+    // The surface will handle scaling to the actual window size
+    const logicalWidth = 640
+    const logicalHeight = 480
+    this.renderer = new RainbowRenderer(logicalWidth, logicalHeight)
+
+    // Create WindowSurface with auto-scaling enabled (default)
+    this.surface = new WindowSurface(logicalWidth, logicalHeight)
+    this.surface.setAutoScale(true)
+    this.surface.setScaleMode(ScaleMode.Fit)
+    this.surface.setBackgroundColor(20, 20, 30, 255) // Dark blue-gray background
+
+    // Get actual window size
     const size = this.window.innerSize()
-    this.renderer = new RainbowRenderer(Math.floor(size.width), Math.floor(size.height))
-    
+    this.surface.resize(Math.floor(size.width), Math.floor(size.height))
+
     logger.success('Window and renderer created', {
       windowId: this.window.id,
       title: this.window.title(),
-      renderSize: `${size.width}x${size.height}`,
+      logicalSize: `${logicalWidth}x${logicalHeight}`,
+      windowSize: `${size.width}x${size.height}`,
+      autoScale: this.surface.isAutoScaleEnabled,
+      scaleMode: this.scaleModes[this.currentScaleMode].name,
       patterns: this.patterns
     })
 
@@ -287,13 +318,13 @@ class RainbowWindowManager {
   }
 
   /**
-   * Render current frame to the window
+   * Render current frame to the window using WindowSurface with auto-scaling
    */
   render(): void {
-    if (!this.renderer || !this.window) return
+    if (!this.renderer || !this.window || !this.surface) return
 
     const pattern = this.patterns[this.currentPattern]
-    
+
     switch (pattern) {
       case 'horizontal':
         this.renderer.renderHorizontalRainbow()
@@ -312,17 +343,18 @@ class RainbowWindowManager {
         break
     }
 
-    // Render the pixel buffer to the window
+    // Render the pixel buffer to the window using WindowSurface
+    // The surface automatically handles scaling based on current window size
     const buffer = this.renderer.getBuffer()
-    const { width, height } = this.renderer.getDimensions()
-    
+
     // Convert Uint8ClampedArray to Buffer for N-API
     const nodeBuffer = Buffer.alloc(buffer.length)
     for (let i = 0; i < buffer.length; i++) {
       nodeBuffer[i] = buffer[i]
     }
-    
-    this.window.render(width, height, nodeBuffer)
+
+    // Use WindowSurface for rendering with auto-scaling
+    this.surface.renderToWindow(this.window, nodeBuffer)
   }
 
   /**
@@ -339,7 +371,8 @@ class RainbowWindowManager {
     this.frameCount++
     if (delta >= 1000) {
       this.fps = Math.round((this.frameCount * 1000) / delta)
-      logger.debug(`Pattern: ${this.patterns[this.currentPattern]} | FPS: ${this.fps} | Frames: ${this.frameCount}`)
+      const scaleMode = this.scaleModes[this.currentScaleMode]
+      logger.debug(`Pattern: ${this.patterns[this.currentPattern]} | Scale: ${scaleMode.name} | FPS: ${this.fps}`)
       this.frameCount = 0
       this.lastFrameTime = now
     }
@@ -354,10 +387,38 @@ class RainbowWindowManager {
   }
 
   /**
+   * Switch to next scale mode
+   */
+  nextScaleMode(): void {
+    if (!this.surface) return
+    this.currentScaleMode = (this.currentScaleMode + 1) % this.scaleModes.length
+    const mode = this.scaleModes[this.currentScaleMode]
+    this.surface.setScaleMode(mode.mode)
+    logger.info(`Switched to scale mode: ${mode.name} - ${mode.desc}`)
+  }
+
+  /**
+   * Toggle auto-scale on/off
+   */
+  toggleAutoScale(): void {
+    if (!this.surface) return
+    const newValue = !this.surface.isAutoScaleEnabled
+    this.surface.setAutoScale(newValue)
+    logger.info(`Auto-scale ${newValue ? 'enabled' : 'disabled'}`)
+  }
+
+  /**
    * Get current pattern name
    */
   getCurrentPattern(): string {
     return this.patterns[this.currentPattern]
+  }
+
+  /**
+   * Get current scale mode name
+   */
+  getCurrentScaleMode(): string {
+    return this.scaleModes[this.currentScaleMode].name
   }
 
   /**
@@ -370,26 +431,36 @@ class RainbowWindowManager {
   }
 
   /**
-   * Handle window resize
+   * Handle window resize - WindowSurface automatically handles scaling
+   * We just need to update the surface with new window dimensions
    */
   handleResize(): void {
-    if (!this.window || !this.renderer) return
-    
+    if (!this.window || !this.surface) return
+
     const size = this.window.innerSize()
-    this.renderer.resize(Math.floor(size.width), Math.floor(size.height))
-    logger.info(`Window resized: ${size.width}x${size.height}`)
+    this.surface.resize(Math.floor(size.width), Math.floor(size.height))
+
+    const dims = this.renderer?.getDimensions()
+    logger.info(`Window resized: ${size.width}x${size.height} (buffer: ${dims?.width}x${dims?.height})`)
   }
 
   /**
    * Get renderer stats
    */
   getStats(): any {
-    if (!this.renderer) return null
-    
+    if (!this.renderer || !this.surface) return null
+
     return {
       pattern: this.getCurrentPattern(),
+      scaleMode: this.getCurrentScaleMode(),
+      autoScale: this.surface.isAutoScaleEnabled,
       fps: this.fps,
-      dimensions: this.renderer.getDimensions(),
+      logicalDimensions: this.renderer.getDimensions(),
+      windowDimensions: {
+        width: this.surface.windowWidth,
+        height: this.surface.windowHeight
+      },
+      scaleFactor: this.surface.scaleFactor,
       bufferSize: this.renderer.getBuffer().length
     }
   }
@@ -410,7 +481,6 @@ class RainbowWindowManager {
  */
 async function main() {
   logger.banner(
-    '🌈 Rainbow Buffer Render Example',
     'Animated pixel buffer rendering with tao-only window'
   )
 
@@ -427,19 +497,15 @@ async function main() {
     // Log initial stats
     manager.logStats()
 
-    // Pattern switching demo
-    logger.section('Pattern Demo')
-    logger.info('Patterns will cycle every 3 seconds:')
-    logger.info('  1. Horizontal Rainbow')
-    logger.info('  2. Vertical Rainbow')
-    logger.info('  3. Radial Rainbow')
-    logger.info('  4. Animated Wave')
-    logger.info('  5. Spiral Pattern')
-
     // Cycle patterns every 3 seconds
     setInterval(() => {
       manager.nextPattern()
     }, 3000)
+
+    // Cycle scale modes every 5 seconds
+    setInterval(() => {
+      manager.nextScaleMode()
+    }, 5000)
 
     // Log stats every 5 seconds
     setInterval(() => {
@@ -448,15 +514,6 @@ async function main() {
 
     // Start render loop
     logger.section('Starting Render Loop')
-    logger.info('Rendering animated rainbow to pixel buffer...')
-    logger.info('In a real app, this buffer would be displayed using:')
-    logger.info('  - softbuffer (software rendering)')
-    logger.info('  - pixels (2D framebuffer)')
-    logger.info('  - wgpu (GPU rendering)')
-    logger.info('')
-    logger.info('NOTE: This example runs at 30 FPS to avoid "Maximum number of clients reached"')
-    logger.info('errors on Wayland/X11 systems. softbuffer creates new display connections')
-    logger.info('on each render, which can exhaust system limits at higher frame rates.')
     logger.info('Press Ctrl+C to exit')
 
     // Render loop
@@ -472,7 +529,7 @@ async function main() {
     // Run event loop
     const interval = setInterval(() => {
       const running = eventLoop.runIteration()
-      
+
       if (!running) {
         clearInterval(interval)
         clearInterval(renderInterval)
