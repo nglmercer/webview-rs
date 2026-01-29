@@ -1,5 +1,5 @@
 
-import { WindowBuilder, WebViewBuilder, EventLoop, Window, WebView } from '../index';
+import { WindowBuilder, WebViewBuilder, EventLoop, Window, WebView } from '../index.js';
 
 export interface TransparentWindowOptions {
   title?: string;

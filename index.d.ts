@@ -78,6 +78,26 @@ export declare class EventLoopWindowTarget {
 
 }
 
+/** Simple pixel renderer for Tao windows */
+export declare class PixelRenderer {
+  /** Creates a new pixel renderer with the given buffer dimensions */
+  constructor(bufferWidth: number, bufferHeight: number)
+  /** Creates a new pixel renderer with options */
+  static withOptions(options: RenderOptions): PixelRenderer
+  /** Sets the scaling mode */
+  setScaleMode(mode: ScaleMode): void
+  /** Sets the background color */
+  setBackgroundColor(r: number, g: number, b: number, a: number): void
+  /**
+   * Renders a pixel buffer to the given window
+   *
+   * # Arguments
+   * * `window` - The Tao window to render to
+   * * `buffer` - RGBA pixel buffer (must be buffer_width * buffer_height * 4 bytes)
+   */
+  render(window: Window, buffer: Buffer): void
+}
+
 /** The web context for a webview. */
 export declare class WebContext {
   /** Creates a new web context with the given data directory. */
@@ -307,53 +327,6 @@ export declare class WindowBuilder {
   withTheme(theme: TaoTheme): this
   /** Builds the window. */
   build(eventLoop: EventLoop): Window
-}
-
-/** Software rendering surface for tao windows using softbuffer with auto-scaling support */
-export declare class WindowSurface {
-  /** Creates a new rendering surface for the given window */
-  constructor(width: number, height: number)
-  /** Creates a new rendering surface with auto-scale enabled by default */
-  static withAutoScale(width: number, height: number, autoScale: boolean): WindowSurface
-  /**
-   * Resizes the surface to match window dimensions
-   * When auto_scale is enabled, this updates the window dimensions for scaling calculations
-   */
-  resize(width: number, height: number): void
-  /**
-   * Resizes the logical buffer dimensions
-   * This changes the size of the pixel buffer you render to
-   */
-  resizeBuffer(width: number, height: number): void
-  /** Enables or disables auto-scaling (default: true) */
-  setAutoScale(enabled: boolean): void
-  /** Gets whether auto-scaling is enabled */
-  get isAutoScaleEnabled(): boolean
-  /** Sets the scale mode for rendering */
-  setScaleMode(mode: ScaleMode): void
-  /** Gets the current scale mode */
-  get scaleMode(): ScaleMode
-  /** Sets the background color for letterboxing (RGBA) */
-  setBackgroundColor(r: number, g: number, b: number, a: number): void
-  /** Gets the background color */
-  get backgroundColor(): Array<number>
-  /**
-   * Renders a pixel buffer to the window with auto-scaling support (RGBA format)
-   * The buffer will be scaled according to the current scale_mode and auto_scale settings
-   */
-  render(buffer: Buffer): void
-  /** Renders a pixel buffer to a specific window using softbuffer with auto-scaling */
-  renderToWindow(window: Window, buffer: Buffer): void
-  /** Gets the logical surface width (buffer dimensions) */
-  get width(): number
-  /** Gets the logical surface height (buffer dimensions) */
-  get height(): number
-  /** Gets the current window width (physical pixels) */
-  get windowWidth(): number
-  /** Gets the current window height (physical pixels) */
-  get windowHeight(): number
-  /** Gets the current scale factor (window size / buffer size) */
-  get scaleFactor(): number
 }
 
 export interface ApplicationEvent {
@@ -1175,6 +1148,26 @@ export interface Rectangle {
   /** The size. */
   size: Size
 }
+
+/** Render options for pixel buffer display */
+export interface RenderOptions {
+  /** Width of the source buffer in pixels */
+  bufferWidth: number
+  /** Height of the source buffer in pixels */
+  bufferHeight: number
+  /** Scaling mode (default: Fit) */
+  scaleMode?: ScaleMode
+  /** Background color for letterboxing [R, G, B, A] (default: [0, 0, 0, 255]) */
+  backgroundColor?: Array<number>
+}
+
+/**
+ * Simple function to render a pixel buffer to a window
+ *
+ * This is a convenience function for one-off renders.
+ * For repeated rendering, use [`PixelRenderer`] instead.
+ */
+export declare function renderPixels(window: Window, buffer: Buffer, bufferWidth: number, bufferHeight: number): void
 
 /** A responder for a request. */
 export interface RequestAsyncResponder {

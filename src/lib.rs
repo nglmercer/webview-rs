@@ -41,6 +41,9 @@ pub use tao::structs::{
 };
 pub use tao::types::{AxisId, ButtonId, DeviceId, Result as TaoResult, WindowId, RGBA as TaoRGBA};
 
+// Re-export render types
+pub use tao::render::{render_pixels, PixelRenderer, RenderOptions};
+
 // High-level API adapter
 pub mod high_level;
 pub use high_level::*;

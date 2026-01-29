@@ -54,7 +54,7 @@ pub enum WindowEvent {
 
 /// Scale mode for rendering when window is resized.
 #[napi]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ScaleMode {
   /// Stretch the buffer to fit the window (may distort aspect ratio).
   Stretch,
