@@ -350,11 +350,34 @@ pub struct EventLoop {
   pub(crate) proxy: Option<tao::event_loop::EventLoopProxy<()>>,
 }
 
+/// Global flag to track if an EventLoop has been created in this process.
+/// GTK on Linux can only have one application instance per process.
+#[cfg(target_os = "linux")]
+static EVENT_LOOP_CREATED: std::sync::atomic::AtomicBool =
+  std::sync::atomic::AtomicBool::new(false);
+
 #[napi]
 impl EventLoop {
   /// Creates a new event loop.
   #[napi(constructor)]
   pub fn new() -> Result<Self> {
+    // On Linux, GTK can only be initialized once per process.
+    // Attempting to create a second EventLoop will cause a panic with:
+    // "Failed to initialize gtk backend!: Error { domain: g-io-error-quark, code: 2,
+    //  message: \"An object is already exported for the interface org.gtk.Application\" }"
+    #[cfg(target_os = "linux")]
+    {
+      use std::sync::atomic::Ordering;
+      if EVENT_LOOP_CREATED.swap(true, Ordering::SeqCst) {
+        return Err(napi::Error::new(
+          napi::Status::GenericFailure,
+          "Only one EventLoop can be created per process on Linux/GTK. \
+           Use a single EventLoop instance for all windows instead of creating multiple."
+            .to_string(),
+        ));
+      }
+    }
+
     let event_loop = tao::event_loop::EventLoop::new();
     let proxy = event_loop.create_proxy();
     Ok(Self {

@@ -6,6 +6,42 @@ import { WindowBuilder, EventLoop, PixelRenderer, RenderOptions, ScaleMode } fro
 const GTK_INIT_TIMEOUT = 5000
 let gtkAvailable = false // Default to false to avoid crashes
 
+// Shared event loop for all tests on Linux (GTK only allows one per process)
+// This must be at module level to persist across tests
+let sharedEventLoop: EventLoop | null = null
+
+// Track if we've already tried to create an event loop (even if it failed)
+let eventLoopCreationAttempted = false
+
+/**
+ * Get or create the shared EventLoop for Linux/GTK.
+ * GTK only allows one EventLoop per process, so all tests must share it.
+ */
+function getOrCreateEventLoop(): EventLoop {
+  if (!sharedEventLoop && !eventLoopCreationAttempted) {
+    eventLoopCreationAttempted = true
+    try {
+      sharedEventLoop = new EventLoop()
+    } catch (e) {
+      // If we get the "Only one EventLoop" error, it means one was already
+      // created in beforeAll during the GTK availability check
+      if (e instanceof Error && e.message.includes('Only one EventLoop')) {
+        // The shared event loop should have been set by checkGtkAvailability
+        // If not, we have a problem
+        if (!sharedEventLoop) {
+          throw new Error('EventLoop was created in checkGtkAvailability but not stored. Tests must run sequentially.')
+        }
+      } else {
+        throw e
+      }
+    }
+  }
+  if (!sharedEventLoop) {
+    throw new Error('EventLoop not available - GTK only allows one per process')
+  }
+  return sharedEventLoop
+}
+
 /**
  * Check if GTK is available on this system
  * Uses a unique app ID to avoid D-Bus conflicts with existing GTK applications
@@ -19,14 +55,22 @@ async function checkGtkAvailability(): Promise<boolean> {
     process.env.GDK_BACKEND = process.env.GDK_BACKEND || 'wayland,x11'
     
     // Quick GTK check - just try creating an event loop
-    const testLoop = new EventLoop()
+    // On Linux, this will also initialize our global EventLoop tracking
+    // Store the event loop in the shared variable so tests can use it
+    eventLoopCreationAttempted = true
+    sharedEventLoop = new EventLoop()
     const testWindow = new WindowBuilder()
       .withTitle('GTK Check')
       .withInnerSize(100, 100)
-      .build(testLoop)
+      .build(sharedEventLoop)
     testWindow.close()
     return true
-  } catch {
+  } catch (e) {
+    // If the error is about only one EventLoop per process, that's actually
+    // a success case - it means GTK is available but we already created one
+    if (e instanceof Error && e.message.includes('Only one EventLoop')) {
+      return true
+    }
     return false
   }
 }
@@ -102,12 +146,15 @@ beforeAll(async () => {
  * Stress test for render functionality
  * Tests high frame counts with large buffer sizes
  * Reproduces issue: "Maximum number of clients reached" after ~231 frames
+ * 
+ * NOTE: On Linux/GTK, only ONE EventLoop can be created per process.
+ * This is a fundamental GTK limitation. Tests must share a single EventLoop.
  */
 describe('Render Stress Tests', () => {
   test('should handle 250+ frames without resource exhaustion', async () => {
     const width = 1920  // High resolution width
     const height = 1080 // High resolution height
-    const frameCount = 250 // More than 231 to trigger the issue
+    const frameCount = 10000 // More than 231 to trigger the issue
     
     // Create buffers (RGBA format) - ~8MB per buffer
     const buffer = Buffer.alloc(width * height * 4)
@@ -123,8 +170,8 @@ describe('Render Stress Tests', () => {
       }
     }
     
-    // Create event loop and window
-    const eventLoop = new EventLoop()
+    // Use shared event loop on Linux, create new one on other platforms
+    const eventLoop = process.platform === 'linux' ? getOrCreateEventLoop() : new EventLoop()
     const window = new WindowBuilder()
       .withTitle('Render Stress Test - 250+ frames')
       .withInnerSize(width / 2, height / 2) // Display at half resolution
@@ -189,7 +236,8 @@ describe('Render Stress Tests', () => {
     const height = 600
     const rendererCount = 10
     
-    const eventLoop = new EventLoop()
+    // Use shared event loop on Linux, create new one on other platforms
+    const eventLoop = process.platform === 'linux' ? getOrCreateEventLoop() : new EventLoop()
     const window = new WindowBuilder()
       .withTitle('Multi-renderer Test')
       .withInnerSize(width, height)

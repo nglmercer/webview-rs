@@ -19,8 +19,9 @@ struct X11RenderState {
 /// Global cache for X11 rendering state to avoid "Maximum number of clients reached" errors.
 /// The key is the window ID.
 #[cfg(target_os = "linux")]
-static X11_RENDER_STATE: std::sync::LazyLock<Mutex<RefCell<std::collections::HashMap<u64, X11RenderState>>>> = 
-  std::sync::LazyLock::new(|| Mutex::new(RefCell::new(std::collections::HashMap::new())));
+static X11_RENDER_STATE: std::sync::LazyLock<
+  Mutex<RefCell<std::collections::HashMap<u64, X11RenderState>>>,
+> = std::sync::LazyLock::new(|| Mutex::new(RefCell::new(std::collections::HashMap::new())));
 
 /// Per-window Wayland rendering state
 #[cfg(target_os = "linux")]
@@ -34,8 +35,9 @@ struct WaylandRenderState {
 /// Global cache for Wayland rendering state
 #[cfg(target_os = "linux")]
 #[allow(dead_code)]
-static WAYLAND_RENDER_STATE: std::sync::LazyLock<Mutex<RefCell<std::collections::HashMap<u64, WaylandRenderState>>>> =
-  std::sync::LazyLock::new(|| Mutex::new(RefCell::new(std::collections::HashMap::new())));
+static WAYLAND_RENDER_STATE: std::sync::LazyLock<
+  Mutex<RefCell<std::collections::HashMap<u64, WaylandRenderState>>>,
+> = std::sync::LazyLock::new(|| Mutex::new(RefCell::new(std::collections::HashMap::new())));
 
 /// Render options for pixel buffer display
 #[napi(object)]
@@ -63,7 +65,7 @@ impl Default for RenderOptions {
 }
 
 /// Simple pixel renderer for Tao windows
-/// 
+///
 /// NOTE: This renderer uses global caches to avoid X11 client limit errors.
 /// The "Maximum number of clients reached" error occurs when creating too many
 /// X11 contexts/surfaces. This implementation uses a global cache keyed by window ID
@@ -187,11 +189,23 @@ impl PixelRenderer {
 
     if !platform_info.supports_direct_rendering {
       // Wayland: use softbuffer for rendering with cached resources
-      return self.render_wayland_cached(window_id_u64, &window_guard, &buffer, window_width, window_height);
+      return self.render_wayland_cached(
+        window_id_u64,
+        &window_guard,
+        &buffer,
+        window_width,
+        window_height,
+      );
     }
 
     // X11: Use cached pixels instance to avoid resource exhaustion
-    self.render_x11_cached(window_id_u64, &window_guard, &buffer, window_width, window_height)
+    self.render_x11_cached(
+      window_id_u64,
+      &window_guard,
+      &buffer,
+      window_width,
+      window_height,
+    )
   }
 
   /// Render using cached pixels instance for X11
@@ -228,17 +242,20 @@ impl PixelRenderer {
             format!("Failed to create pixels: {:?}", e),
           )
         })?;
-      
+
       // SAFETY: We need to extend the lifetime to 'static for storage.
       // This is safe because:
       // 1. The pixels instance is only used while the window is alive
       // 2. The window ID is unique and won't be reused
       // 3. We clean up when the window is closed
-      let static_pixels: pixels::Pixels<'static> = unsafe {
-        std::mem::transmute(new_pixels)
-      };
-      
-      cache.borrow_mut().insert(window_id, X11RenderState { pixels: static_pixels });
+      let static_pixels: pixels::Pixels<'static> = unsafe { std::mem::transmute(new_pixels) };
+
+      cache.borrow_mut().insert(
+        window_id,
+        X11RenderState {
+          pixels: static_pixels,
+        },
+      );
     }
 
     // Get mutable reference to state from cache
@@ -265,7 +282,7 @@ impl PixelRenderer {
     if needs_resize {
       drop(cache_mut);
       cache.borrow_mut().remove(&window_id);
-      
+
       // Recreate
       let surface_texture = pixels::SurfaceTexture::new(window_width, window_height, window);
       let new_pixels = pixels::Pixels::new(self.buffer_width, self.buffer_height, surface_texture)
@@ -275,15 +292,18 @@ impl PixelRenderer {
             format!("Failed to create pixels: {:?}", e),
           )
         })?;
-      
-      let static_pixels: pixels::Pixels<'static> = unsafe {
-        std::mem::transmute(new_pixels)
-      };
-      
-      cache.borrow_mut().insert(window_id, X11RenderState { pixels: static_pixels });
+
+      let static_pixels: pixels::Pixels<'static> = unsafe { std::mem::transmute(new_pixels) };
+
+      cache.borrow_mut().insert(
+        window_id,
+        X11RenderState {
+          pixels: static_pixels,
+        },
+      );
       cache_mut = cache.borrow_mut();
     }
-    
+
     let state = cache_mut.get_mut(&window_id).ok_or_else(|| {
       napi::Error::new(
         napi::Status::GenericFailure,
@@ -392,15 +412,14 @@ impl PixelRenderer {
     // while still caching across render calls. We store by window_id to handle
     // multiple windows correctly.
     thread_local! {
-      static CONTEXT: RefCell<Option<softbuffer::Context<&'static tao::window::Window>>> = RefCell::new(None);
-      static SURFACE: RefCell<Option<softbuffer::Surface<&'static tao::window::Window, &'static tao::window::Window>>> = RefCell::new(None);
-      static LAST_WINDOW_ID: RefCell<u64> = RefCell::new(0);
+      static CONTEXT: RefCell<Option<softbuffer::Context<&'static tao::window::Window>>> = const { RefCell::new(None) };
+      static SURFACE: RefCell<Option<softbuffer::Surface<&'static tao::window::Window, &'static tao::window::Window>>> = const { RefCell::new(None) };
+      static LAST_WINDOW_ID: RefCell<u64> = const { RefCell::new(0) };
     }
 
     // Check if we need to create new context/surface (first call or different window)
-    let needs_create = CONTEXT.with(|ctx| {
-      ctx.borrow().is_none()
-    }) || LAST_WINDOW_ID.with(|id| *id.borrow() != window_id);
+    let needs_create = CONTEXT.with(|ctx| ctx.borrow().is_none())
+      || LAST_WINDOW_ID.with(|id| *id.borrow() != window_id);
 
     if needs_create {
       // Create new context and surface - need to extend lifetime
@@ -408,7 +427,7 @@ impl PixelRenderer {
       // This is safe because the window is guaranteed to be alive during rendering
       // and we clean up when switching to a different window.
       let window_ref: &'static tao::window::Window = unsafe { std::mem::transmute(window) };
-      
+
       let context = softbuffer::Context::new(window_ref).map_err(|e| {
         napi::Error::new(
           napi::Status::GenericFailure,
@@ -821,7 +840,7 @@ fn copy_buffer_scaled_softbuffer(
 ///
 /// This is a convenience function for one-off renders.
 /// For repeated rendering, use [`PixelRenderer`] instead.
-/// 
+///
 /// # Warning
 /// Using this function repeatedly (200+ times) may cause X11 "Maximum number of clients reached"
 /// errors. For repeated rendering, create a [`PixelRenderer`] instance and reuse it.
