@@ -3,6 +3,7 @@
 //! This module contains all structs from the tao crate.
 
 use napi::bindgen_prelude::*;
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use std::env;
 use std::sync::{Arc, Mutex};
@@ -341,6 +342,9 @@ pub struct EventLoop {
   pub(crate) inner: Option<winit::event_loop::EventLoop<()>>,
   #[allow(dead_code)]
   pub(crate) proxy: Option<winit::event_loop::EventLoopProxy<()>>,
+  /// Event handler for window events
+  #[allow(dead_code)]
+  pub(crate) event_handler: Arc<Mutex<Option<ThreadsafeFunction<WindowEventData>>>>,
 }
 
 /// Global flag to track if an EventLoop has been created in this process.
@@ -381,6 +385,7 @@ impl EventLoop {
     Ok(Self {
       inner: Some(event_loop),
       proxy: Some(proxy),
+      event_handler: Arc::new(Mutex::new(None)),
     })
   }
 
@@ -428,8 +433,93 @@ impl EventLoop {
               keep_running = false;
               elwt.exit();
             }
-            winit::event::Event::AboutToWait => {
+            // Handle other window events to keep the window responsive
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::RedrawRequested,
+              ..
+            } => {
+              // Window requested redraw - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::Resized(_),
+              ..
+            } => {
+              // Window resized - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::Moved(_),
+              ..
+            } => {
+              // Window moved - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::Focused(_),
+              ..
+            } => {
+              // Window focus changed - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::CursorEntered { .. },
+              ..
+            } => {
+              // Cursor entered window - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::CursorLeft { .. },
+              ..
+            } => {
+              // Cursor left window - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::CursorMoved { .. },
+              ..
+            } => {
+              // Cursor moved - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::MouseInput { .. },
+              ..
+            } => {
+              // Mouse input - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::KeyboardInput { .. },
+              ..
+            } => {
+              // Keyboard input - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::ScaleFactorChanged { .. },
+              ..
+            } => {
+              // Scale factor changed - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::ThemeChanged(_),
+              ..
+            } => {
+              // Theme changed - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::ModifiersChanged(_),
+              ..
+            } => {
+              // Modifiers changed - this is normal, continue running
+            }
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::Destroyed,
+              ..
+            } => {
+              // Window destroyed - exit the loop
+              keep_running = false;
               elwt.exit();
+            }
+            winit::event::Event::AboutToWait => {
+              // Continue running - don't exit here
+              // This event fires when all pending events have been processed
+              // and the event loop is about to wait for new events.
+              // We should NOT call elwt.exit() here as that would cause
+              // the event loop to return immediately after the first iteration.
             }
             _ => {}
           }
@@ -448,6 +538,22 @@ impl EventLoop {
     Ok(EventLoopProxy {
       inner: self.proxy.clone(),
     })
+  }
+
+  /// Registers an event handler callback for window events.
+  /// The callback will be called whenever a window event occurs.
+  #[napi]
+  pub fn on_event(&self, handler: Option<ThreadsafeFunction<WindowEventData>>) {
+    *self.event_handler.lock().unwrap() = handler;
+  }
+
+  /// Helper method to emit a window event to the registered handler
+  fn emit_event(&self, event: WindowEvent, window_id: u32) {
+    let handler = self.event_handler.lock().unwrap();
+    if let Some(handler) = handler.as_ref() {
+      let event_data = WindowEventData { event, window_id };
+      let _ = handler.call(Ok(event_data), ThreadsafeFunctionCallMode::NonBlocking);
+    }
   }
 }
 

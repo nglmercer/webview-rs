@@ -485,7 +485,11 @@ impl Application {
             elwt.exit();
           }
           winit::event::Event::AboutToWait => {
-            elwt.exit();
+            // Continue running - don't exit here
+            // This event fires when all pending events have been processed
+            // and the event loop is about to wait for new events.
+            // We should NOT call elwt.exit() here as that would cause
+            // the event loop to return immediately after the first iteration.
           }
           _ => {}
         }

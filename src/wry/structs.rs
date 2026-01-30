@@ -515,7 +515,8 @@ impl WebViewBuilder {
       target_os = "windows",
       target_os = "macos",
       target_os = "ios",
-      target_os = "android"
+      target_os = "android",
+      target_os = "linux"
     ))]
     {
       webview_builder = webview_builder.with_incognito(self.attributes.incognito);
@@ -602,6 +603,15 @@ impl WebViewBuilder {
       ));
     }
 
+    #[cfg(target_os = "linux")]
+    {
+      use winit::platform::wayland::WindowBuilderExtWayland;
+      use winit::platform::x11::WindowBuilderExtX11;
+
+      window_builder = WindowBuilderExtWayland::with_name(window_builder, &label, &label);
+      window_builder = WindowBuilderExtX11::with_name(window_builder, &label, &label);
+    }
+
     // Build the window
     let window = window_builder.build(el).map_err(|e| {
       napi::Error::new(
@@ -657,7 +667,8 @@ impl WebViewBuilder {
       target_os = "windows",
       target_os = "macos",
       target_os = "ios",
-      target_os = "android"
+      target_os = "android",
+      target_os = "linux"
     ))]
     {
       webview_builder = webview_builder.with_incognito(self.attributes.incognito);
