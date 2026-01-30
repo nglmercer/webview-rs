@@ -33,7 +33,7 @@ jobs:
   # JOB 2: PUBLISH (Github Release + NPM)
   release:
     name: Publish Release
-    needs: build
+    needs: call-build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
 
