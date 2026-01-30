@@ -18,6 +18,7 @@ permissions:
 
 env:
   APP_NAME: webview
+  NODE_VERSION: "24"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,7 +33,7 @@ jobs:
   # JOB 2: PUBLISH (Github Release + NPM)
   release:
     name: Publish Release
-    needs: build-release
+    needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
 
@@ -53,13 +54,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{env.NODE_VERSION}}
           registry-url: "https://registry.npmjs.org"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: bindings-*
+          merge-multiple: true
 
       - name: Prepare Package
         run: |
@@ -72,8 +75,7 @@ jobs:
 
           ls -l package/
 
-          VERSION="${{ github.ref_name }}"
-          VERSION="${VERSION#v}"
+          VERSION="${TAG_NAME#v}"
           echo "Setting version to $VERSION"
           node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package/package.json')); p.version='$VERSION'; fs.writeFileSync('package/package.json', JSON.stringify(p,null,2));"
 
@@ -88,3 +90,8 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to NPM
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
