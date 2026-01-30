@@ -11,6 +11,11 @@ exact = false
 
 [test]
 # Test configuration
+# Run tests sequentially to avoid GTK D-Bus conflicts
+# GTK applications can only own the org.gtk.Application interface once at a time
+isolated = true
+coverage = false
+timeout = 120000
 
 [run]
 # Run configuration
