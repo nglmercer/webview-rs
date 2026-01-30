@@ -21,7 +21,7 @@
     "*.node"
   ],
   "napi": {
-    "binaryName": "webview",
+    "binaryName": "webview-napi",
     "targets": [
       "x86_64-pc-windows-msvc",
       "i686-pc-windows-msvc",
