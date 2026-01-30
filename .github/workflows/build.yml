@@ -2,7 +2,7 @@ name: Build
 
 env:
   DEBUG: napi:*
-  APP_NAME: webview
+  APP_NAME: webview-napi
   MACOSX_DEPLOYMENT_TARGET: '10.13'
   CARGO_INCREMENTAL: '1'
   CARGO_TERM_COLOR: always
@@ -33,7 +33,7 @@ jobs:
             target: aarch64-apple-darwin
             build_script: |
               export PKG_CONFIG_ALLOW_CROSS=1
-              bun run build --target aarch64-apple-darwin
+              bun run build --platform --target aarch64-apple-darwin --release
 
           # Windows
           - os: windows-latest
@@ -79,7 +79,7 @@ jobs:
               export CXX=aarch64-linux-gnu-g++
               export AR=aarch64-linux-gnu-ar
               export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-              bun run build --target aarch64-unknown-linux-gnu
+              bun run build --platform --target aarch64-unknown-linux-gnu --release
 
           # Linux ARMv7
           - os: ubuntu-22.04
@@ -112,7 +112,7 @@ jobs:
               export CXX=arm-linux-gnueabihf-g++
               export AR=arm-linux-gnueabihf-ar
               export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
-              bun run build --target armv7-unknown-linux-gnueabihf
+              bun run build --platform --target armv7-unknown-linux-gnueabihf --release
 
           # Android
           - os: ubuntu-latest
@@ -220,7 +220,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build
-        run: ${{ matrix.settings.build_script || format('bun run build --target {0}', matrix.settings.target) }}
+        run: ${{ matrix.settings.build_script || format('bun run build --platform --target {0} --release', matrix.settings.target) }}
         shell: bash
 
       - name: Upload artifact
