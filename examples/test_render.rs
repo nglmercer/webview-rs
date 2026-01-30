@@ -51,8 +51,8 @@ fn main() {
     match event {
       // Evento: La ventana pide dibujarse
       Event::WindowEvent {
-          event: WindowEvent::RedrawRequested,
-          ..
+        event: WindowEvent::RedrawRequested,
+        ..
       } => {
         let (r, g, b) = colors[current_color_index];
         let frame = pixels.frame_mut();

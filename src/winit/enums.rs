@@ -50,6 +50,20 @@ pub enum WindowEvent {
   Visible,
   /// The window became invisible.
   Invisible,
+  /// The cursor entered the window.
+  CursorEntered,
+  /// The cursor left the window.
+  CursorLeft,
+  /// The cursor moved within the window.
+  CursorMoved,
+  /// A mouse input event occurred.
+  MouseInput,
+  /// A keyboard input event occurred.
+  KeyboardInput,
+  /// The keyboard modifiers have changed.
+  ModifiersChanged,
+  /// The event loop is about to wait for new events.
+  AboutToWait,
 }
 
 /// Scale mode for rendering when window is resized.

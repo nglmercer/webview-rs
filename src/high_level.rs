@@ -189,6 +189,12 @@ pub struct Application {
 impl Application {
   #[napi(constructor)]
   pub fn new(_options: Option<ApplicationOptions>) -> Self {
+    #[cfg(target_os = "linux")]
+    {
+      if let Err(e) = gtk::init() {
+        eprintln!("Failed to initialize GTK: {}", e);
+      }
+    }
     let event_loop = winit::event_loop::EventLoop::new().unwrap();
     let event_loop_proxy = event_loop.create_proxy();
     Self {
@@ -406,6 +412,11 @@ impl Application {
       let app_ref = Arc::new(self.clone_internal());
 
       let _ = event_loop.run(move |event, elwt| {
+        #[cfg(target_os = "linux")]
+        while gtk::events_pending() {
+          gtk::main_iteration();
+        }
+
         elwt.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
         if *exit_requested.lock().unwrap() {
@@ -463,6 +474,11 @@ impl Application {
       }
 
       let status = event_loop.pump_events(None, |event, elwt| {
+        #[cfg(target_os = "linux")]
+        while gtk::events_pending() {
+          gtk::main_iteration();
+        }
+
         elwt.set_control_flow(winit::event_loop::ControlFlow::Poll);
 
         app_ref.process_pending_items(elwt);

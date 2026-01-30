@@ -335,6 +335,15 @@ pub struct Icon {
   pub rgba: Buffer,
 }
 
+/// Helper function to convert winit WindowId to u32
+fn window_id_to_u32(window_id: winit::window::WindowId) -> u32 {
+  use std::hash::{Hash, Hasher};
+  let mut hasher = std::collections::hash_map::DefaultHasher::new();
+  window_id.hash(&mut hasher);
+  let hash = hasher.finish();
+  (hash & 0xFFFFFFFF) as u32
+}
+
 /// Event loop for handling window events.
 #[napi]
 pub struct EventLoop {
@@ -407,10 +416,28 @@ impl EventLoop {
     Ok(())
   }
 
+  /// Helper function to emit a window event to the JavaScript handler
+  fn emit_window_event(
+    event_handler: &Arc<Mutex<Option<ThreadsafeFunction<WindowEventData>>>>,
+    window_id: winit::window::WindowId,
+    event: WindowEvent,
+  ) {
+    let handler = event_handler.lock().unwrap();
+    if let Some(handler) = handler.as_ref() {
+      let window_id_u32 = window_id_to_u32(window_id);
+      let event_data = WindowEventData {
+        event,
+        window_id: window_id_u32,
+      };
+      let _ = handler.call(Ok(event_data), ThreadsafeFunctionCallMode::NonBlocking);
+    }
+  }
+
   /// Runs a single iteration of the event loop.
   #[napi]
   pub fn run_iteration(&mut self) -> Result<bool> {
     let mut keep_running = true;
+    let event_handler = self.event_handler.clone();
     if let Some(event_loop) = &mut self.inner {
       #[cfg(any(
         target_os = "linux",
@@ -428,8 +455,9 @@ impl EventLoop {
           match event {
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::CloseRequested,
-              ..
+              window_id,
             } => {
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::CloseRequested);
               keep_running = false;
               elwt.exit();
             }
@@ -442,84 +470,95 @@ impl EventLoop {
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::Resized(_),
-              ..
+              window_id,
             } => {
-              // Window resized - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::Resized);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::Moved(_),
-              ..
+              window_id,
             } => {
-              // Window moved - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::Moved);
             }
             winit::event::Event::WindowEvent {
-              event: winit::event::WindowEvent::Focused(_),
-              ..
+              event: winit::event::WindowEvent::Focused(focused),
+              window_id,
             } => {
-              // Window focus changed - this is normal, continue running
+              let event = if focused {
+                WindowEvent::Focused
+              } else {
+                WindowEvent::Unfocused
+              };
+              Self::emit_window_event(&event_handler, window_id, event);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::CursorEntered { .. },
-              ..
+              window_id,
             } => {
-              // Cursor entered window - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::CursorEntered);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::CursorLeft { .. },
-              ..
+              window_id,
             } => {
-              // Cursor left window - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::CursorLeft);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::CursorMoved { .. },
-              ..
+              window_id,
             } => {
-              // Cursor moved - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::CursorMoved);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::MouseInput { .. },
-              ..
+              window_id,
             } => {
-              // Mouse input - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::MouseInput);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::KeyboardInput { .. },
-              ..
+              window_id,
             } => {
-              // Keyboard input - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::KeyboardInput);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::ScaleFactorChanged { .. },
-              ..
+              window_id,
             } => {
-              // Scale factor changed - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::ScaleFactorChanged);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::ThemeChanged(_),
-              ..
+              window_id,
             } => {
-              // Theme changed - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::ThemeChanged);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::ModifiersChanged(_),
-              ..
+              window_id,
             } => {
-              // Modifiers changed - this is normal, continue running
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::ModifiersChanged);
             }
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::Destroyed,
-              ..
+              window_id,
             } => {
+              Self::emit_window_event(&event_handler, window_id, WindowEvent::Destroyed);
               // Window destroyed - exit the loop
               keep_running = false;
               elwt.exit();
             }
             winit::event::Event::AboutToWait => {
-              // Continue running - don't exit here
-              // This event fires when all pending events have been processed
-              // and the event loop is about to wait for new events.
-              // We should NOT call elwt.exit() here as that would cause
-              // the event loop to return immediately after the first iteration.
+              // Emit AboutToWait event to allow JavaScript to perform idle tasks
+              let handler = event_handler.lock().unwrap();
+              if let Some(handler) = handler.as_ref() {
+                // Use window_id 0 since AboutToWait is not associated with a specific window
+                let event_data = WindowEventData {
+                  event: WindowEvent::AboutToWait,
+                  window_id: 0,
+                };
+                let _ = handler.call(Ok(event_data), ThreadsafeFunctionCallMode::NonBlocking);
+              }
             }
             _ => {}
           }
@@ -545,15 +584,6 @@ impl EventLoop {
   #[napi]
   pub fn on_event(&self, handler: Option<ThreadsafeFunction<WindowEventData>>) {
     *self.event_handler.lock().unwrap() = handler;
-  }
-
-  /// Helper method to emit a window event to the registered handler
-  fn emit_event(&self, event: WindowEvent, window_id: u32) {
-    let handler = self.event_handler.lock().unwrap();
-    if let Some(handler) = handler.as_ref() {
-      let event_data = WindowEventData { event, window_id };
-      let _ = handler.call(Ok(event_data), ThreadsafeFunctionCallMode::NonBlocking);
-    }
   }
 }
 
@@ -645,6 +675,7 @@ impl EventLoopBuilder {
     Ok(EventLoop {
       inner: Some(event_loop),
       proxy: Some(proxy),
+      event_handler: Arc::new(Mutex::new(None)),
     })
   }
 }

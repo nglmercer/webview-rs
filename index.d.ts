@@ -55,6 +55,11 @@ export declare class EventLoop {
   runIteration(): boolean
   /** Creates an event loop proxy. */
   createProxy(): EventLoopProxy
+  /**
+   * Registers an event handler callback for window events.
+   * The callback will be called whenever a window event occurs.
+   */
+  onEvent(handler?: (((err: Error | null, arg: WindowEventData) => any)) | undefined | null): void
 }
 
 /** Builder for creating event loops. */
