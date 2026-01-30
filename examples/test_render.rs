@@ -1,9 +1,9 @@
 use pixels::{Pixels, SurfaceTexture};
 use std::env;
 use std::time::{Duration, Instant};
-use tao::event::{Event, WindowEvent};
-use tao::event_loop::{ControlFlow, EventLoop};
-use tao::window::WindowBuilder;
+use winit::event::{Event, WindowEvent};
+use winit::event_loop::{ControlFlow, EventLoop};
+use winit::window::WindowBuilder;
 
 fn main() {
   // --- FIX AUTOMÁTICO ---
@@ -15,11 +15,11 @@ fn main() {
     env::set_var("GDK_BACKEND", "x11");
   }
 
-  let event_loop = EventLoop::new();
+  let event_loop = EventLoop::new().unwrap();
 
   let window_inner = WindowBuilder::new()
     .with_title("Rust Render Test - Color Cycle")
-    .with_inner_size(tao::dpi::LogicalSize::new(400.0, 300.0))
+    .with_inner_size(winit::dpi::LogicalSize::new(400.0, 300.0))
     .build(&event_loop)
     .unwrap();
 
@@ -44,13 +44,16 @@ fn main() {
   let mut current_color_index = 0;
   let mut last_update = Instant::now();
 
-  event_loop.run(move |event, _, control_flow| {
+  let _ = event_loop.run(move |event, elwt| {
     // Usamos Wait en lugar de Poll para no quemar CPU esperando eventos
-    *control_flow = ControlFlow::Wait;
+    elwt.set_control_flow(ControlFlow::Wait);
 
     match event {
       // Evento: La ventana pide dibujarse
-      Event::RedrawRequested(_) => {
+      Event::WindowEvent {
+          event: WindowEvent::RedrawRequested,
+          ..
+      } => {
         let (r, g, b) = colors[current_color_index];
         let frame = pixels.frame_mut();
 
@@ -63,7 +66,7 @@ fn main() {
 
         if let Err(err) = pixels.render() {
           eprintln!("Error render: {}", err);
-          *control_flow = ControlFlow::Exit;
+          elwt.exit();
           return;
         }
 
@@ -86,11 +89,11 @@ fn main() {
         if size.width > 0 && size.height > 0 {
           if let Err(err) = pixels.resize_surface(size.width, size.height) {
             eprintln!("Error resizing surface: {}", err);
-            *control_flow = ControlFlow::Exit;
+            elwt.exit();
           }
           if let Err(err) = pixels.resize_buffer(size.width, size.height) {
             eprintln!("Error resizing buffer: {}", err);
-            *control_flow = ControlFlow::Exit;
+            elwt.exit();
           }
           window.request_redraw();
         }
@@ -101,11 +104,11 @@ fn main() {
         event: WindowEvent::CloseRequested,
         ..
       } => {
-        *control_flow = ControlFlow::Exit;
+        elwt.exit();
       }
 
       // Evento: Loop idle (para arrancar el redibujado inicial)
-      Event::MainEventsCleared => {
+      Event::AboutToWait => {
         window.request_redraw();
       }
 

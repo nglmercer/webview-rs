@@ -490,8 +490,14 @@ impl WebViewBuilder {
 
     // Set bounds if provided
     webview_builder = webview_builder.with_bounds(wry::Rect {
-      position: wry::dpi::Position::Logical(wry::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)),
-      size: wry::dpi::Size::Logical(wry::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)),
+      position: wry::dpi::Position::Logical(wry::dpi::LogicalPosition::new(
+        self.attributes.x as f64,
+        self.attributes.y as f64,
+      )),
+      size: wry::dpi::Size::Logical(wry::dpi::LogicalSize::new(
+        self.attributes.width as f64,
+        self.attributes.height as f64,
+      )),
     });
 
     // Set URL or HTML
@@ -526,7 +532,7 @@ impl WebViewBuilder {
 
     // Build the webview
     // Unified build path for all platforms
-    
+
     // IPC Handler
     let (webview_builder_with_ipc, listeners) = setup_ipc_handler(
       self.ipc_handler.take(),
@@ -544,7 +550,7 @@ impl WebViewBuilder {
         format!("Failed to create webview: {}", e),
       )
     })?;
-    
+
     #[allow(clippy::arc_with_non_send_sync)]
     let webview_inner = Arc::new(Mutex::new(webview));
     Ok(WebView {
@@ -626,8 +632,14 @@ impl WebViewBuilder {
 
     // Set bounds
     webview_builder = webview_builder.with_bounds(wry::Rect {
-      position: wry::dpi::Position::Logical(wry::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)),
-      size: wry::dpi::Size::Logical(wry::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)),
+      position: wry::dpi::Position::Logical(wry::dpi::LogicalPosition::new(
+        self.attributes.x as f64,
+        self.attributes.y as f64,
+      )),
+      size: wry::dpi::Size::Logical(wry::dpi::LogicalSize::new(
+        self.attributes.width as f64,
+        self.attributes.height as f64,
+      )),
     });
 
     // Set URL or HTML
@@ -677,7 +689,7 @@ impl WebViewBuilder {
         format!("Failed to create webview: {}", e),
       )
     })?;
-    
+
     #[allow(clippy::arc_with_non_send_sync)]
     let webview_inner = Arc::new(Mutex::new(webview));
     Ok(WebView {

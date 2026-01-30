@@ -8,7 +8,7 @@ use std::env;
 use std::sync::{Arc, Mutex};
 
 use crate::winit::enums::{
-  CursorIcon, ModifiersState, MouseButton, MouseButtonState, WinitTheme, WindowEvent,
+  CursorIcon, ModifiersState, MouseButton, MouseButtonState, WindowEvent, WinitTheme,
 };
 use crate::winit::types::Result;
 
@@ -791,18 +791,18 @@ impl Window {
   pub fn is_always_on_top(&self) -> Result<bool> {
     // winit 0.30 may not expose a getter for this easily, returning false safe default
     // or we can implement if available. Assuming not available for now based on error log "no method named is_always_on_top"
-    Ok(false) 
+    Ok(false)
   }
 
   /// Sets whether the window is always on top.
   #[napi]
   pub fn set_always_on_top(&self, always_on_top: bool) -> Result<()> {
     if let Some(inner) = &self.inner {
-       let level = if always_on_top {
-         winit::window::WindowLevel::AlwaysOnTop
-       } else {
-         winit::window::WindowLevel::Normal
-       };
+      let level = if always_on_top {
+        winit::window::WindowLevel::AlwaysOnTop
+      } else {
+        winit::window::WindowLevel::Normal
+      };
       inner.lock().unwrap().set_window_level(level);
     }
     Ok(())
@@ -888,8 +888,8 @@ impl Window {
   /// Gets the cursor position.
   #[napi]
   pub fn cursor_position(&self) -> Result<Position> {
-      // Not supported in winit 0.30 directly from Window
-      Ok(Position { x: 0.0, y: 0.0 })
+    // Not supported in winit 0.30 directly from Window
+    Ok(Position { x: 0.0, y: 0.0 })
   }
 
   /// Drags the window.

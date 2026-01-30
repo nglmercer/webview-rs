@@ -5,8 +5,8 @@
  * using @webviewjs/webview
  */
 
-import { WebViewBuilder, EventLoop } from '../index'
-import { createLogger } from './logger'
+import { WebViewBuilder, EventLoop } from '../index.js'
+import { createLogger } from './logger.js'
 
 const logger = createLogger('WebViewURL')
 

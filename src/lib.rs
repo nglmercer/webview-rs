@@ -28,18 +28,20 @@ pub use wry::types::{Result, WebViewId, RGBA};
 // Re-export winit types
 pub use winit::enums::{
   CursorIcon, DeviceEvent, ElementState, Force, Key, KeyCode, KeyLocation, ModifiersState,
-  MouseButton, MouseButtonState, ResizeDirection, ScaleMode, StartCause,
-  WinitControlFlow, WinitFullscreenType, WinitTheme, TouchPhase, WindowEvent,
+  MouseButton, MouseButtonState, ResizeDirection, ScaleMode, StartCause, TouchPhase, WindowEvent,
+  WinitControlFlow, WinitFullscreenType, WinitTheme,
 };
 pub use winit::functions::{available_monitors, primary_monitor, winit_version};
 pub use winit::structs::{
   CursorPosition, EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget, GestureEvent,
   HiDpiScaling, Icon, KeyboardEvent, MonitorInfo, MouseEvent, NotSupportedError, OsError, Position,
-  RawKeyEvent, Rectangle, ResizeDetails, ScaleFactorChangeDetails, Size, WinitProgressBar,
-  ThemeChangeDetails, Touch, VideoMode, Window, WindowAttributes, WindowBuilder, WindowDragOptions,
-  WindowJumpOptions, WindowOptions, WindowSizeConstraints,
+  RawKeyEvent, Rectangle, ResizeDetails, ScaleFactorChangeDetails, Size, ThemeChangeDetails, Touch,
+  VideoMode, Window, WindowAttributes, WindowBuilder, WindowDragOptions, WindowJumpOptions,
+  WindowOptions, WindowSizeConstraints, WinitProgressBar,
 };
-pub use winit::types::{AxisId, ButtonId, DeviceId, Result as WinitResult, WindowId, RGBA as WinitRGBA};
+pub use winit::types::{
+  AxisId, ButtonId, DeviceId, Result as WinitResult, WindowId, RGBA as WinitRGBA,
+};
 
 // Re-export render types
 pub use winit::render::{render_pixels, PixelRenderer, RenderOptions};

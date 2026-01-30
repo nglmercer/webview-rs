@@ -23,7 +23,6 @@ use crate::winit::structs::Position;
 #[cfg(target_os = "macos")]
 use winit::platform::macos::WindowAttributesExtMacOS;
 
-
 #[cfg(target_os = "windows")]
 use winit::platform::windows::WindowBuilderExtWindows;
 
@@ -258,7 +257,10 @@ impl Application {
     let _ = self.event_loop_proxy.send_event(());
   }
 
-  fn process_pending_items(&self, event_loop_target: &winit::event_loop::EventLoopWindowTarget<()>) {
+  fn process_pending_items(
+    &self,
+    event_loop_target: &winit::event_loop::EventLoopWindowTarget<()>,
+  ) {
     let mut pending = self.windows_to_create.lock().unwrap();
     for (opts, win_handle, webviews_to_create) in pending.drain(..) {
       let window_level = if opts.always_on_top.unwrap_or(false) {
