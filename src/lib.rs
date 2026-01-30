@@ -10,8 +10,8 @@
 // Wry bindings
 pub mod wry;
 
-// Tao bindings
-pub mod tao;
+// Winit bindings
+pub mod winit;
 
 // Re-export wry types
 pub use wry::enums::{
@@ -25,24 +25,24 @@ pub use wry::structs::{
 };
 pub use wry::types::{Result, WebViewId, RGBA};
 
-// Re-export tao types
-pub use tao::enums::{
+// Re-export winit types
+pub use winit::enums::{
   CursorIcon, DeviceEvent, ElementState, Force, Key, KeyCode, KeyLocation, ModifiersState,
-  MouseButton, MouseButtonState, ProgressState, ResizeDirection, ScaleMode, StartCause,
-  TaoControlFlow, TaoFullscreenType, TaoTheme, TouchPhase, UserAttentionType, WindowEvent,
+  MouseButton, MouseButtonState, ResizeDirection, ScaleMode, StartCause,
+  WinitControlFlow, WinitFullscreenType, WinitTheme, TouchPhase, WindowEvent,
 };
-pub use tao::functions::{available_monitors, primary_monitor, tao_version};
-pub use tao::structs::{
+pub use winit::functions::{available_monitors, primary_monitor, winit_version};
+pub use winit::structs::{
   CursorPosition, EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget, GestureEvent,
   HiDpiScaling, Icon, KeyboardEvent, MonitorInfo, MouseEvent, NotSupportedError, OsError, Position,
-  RawKeyEvent, Rectangle, ResizeDetails, ScaleFactorChangeDetails, Size, TaoProgressBar,
+  RawKeyEvent, Rectangle, ResizeDetails, ScaleFactorChangeDetails, Size, WinitProgressBar,
   ThemeChangeDetails, Touch, VideoMode, Window, WindowAttributes, WindowBuilder, WindowDragOptions,
   WindowJumpOptions, WindowOptions, WindowSizeConstraints,
 };
-pub use tao::types::{AxisId, ButtonId, DeviceId, Result as TaoResult, WindowId, RGBA as TaoRGBA};
+pub use winit::types::{AxisId, ButtonId, DeviceId, Result as WinitResult, WindowId, RGBA as WinitRGBA};
 
 // Re-export render types
-pub use tao::render::{render_pixels, PixelRenderer, RenderOptions};
+pub use winit::render::{render_pixels, PixelRenderer, RenderOptions};
 
 // High-level API adapter
 pub mod high_level;

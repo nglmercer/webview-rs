@@ -1,14 +1,14 @@
-//! Tao enums
+//! Winit enums
 //!
 //! This module contains all enums from the tao crate.
 
 use napi_derive::napi;
 
-use crate::tao::structs::MonitorInfo;
+use crate::winit::structs::MonitorInfo;
 
 /// Control flow of the application event loop.
 #[napi]
-pub enum TaoControlFlow {
+pub enum WinitControlFlow {
   /// The application will continue running normally.
   Poll,
   /// The application will wait until the specified time.
@@ -362,7 +362,7 @@ pub enum CursorIcon {
 
 /// Window theme.
 #[napi]
-pub enum TaoTheme {
+pub enum WinitTheme {
   /// Light theme.
   Light,
   /// Dark theme.
@@ -371,7 +371,7 @@ pub enum TaoTheme {
 
 /// Fullscreen type.
 #[napi]
-pub enum TaoFullscreenType {
+pub enum WinitFullscreenType {
   /// Exclusive fullscreen.
   Exclusive,
   /// Borderless fullscreen.

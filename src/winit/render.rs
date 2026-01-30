@@ -1,10 +1,10 @@
 //! Simple pixel buffer rendering module
 //!
-//! Provides a minimal API for rendering RGBA pixel buffers to Tao windows.
+//! Provides a minimal API for rendering RGBA pixel buffers to Winit windows.
 //! Supports both X11 (via pixels crate) and Wayland (via softbuffer crate).
 
-use crate::tao::enums::ScaleMode;
-use crate::tao::platform;
+use crate::winit::enums::ScaleMode;
+use crate::winit::platform;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use std::cell::RefCell;
@@ -64,7 +64,7 @@ impl Default for RenderOptions {
   }
 }
 
-/// Simple pixel renderer for Tao windows
+/// Simple pixel renderer for Winit windows
 ///
 /// NOTE: This renderer uses global caches to avoid X11 client limit errors.
 /// The "Maximum number of clients reached" error occurs when creating too many
@@ -130,7 +130,7 @@ impl PixelRenderer {
   /// Renders a pixel buffer to the given window
   ///
   /// # Arguments
-  /// * `window` - The Tao window to render to
+  /// * `window` - The Winit window to render to
   /// * `buffer` - RGBA pixel buffer (must be buffer_width * buffer_height * 4 bytes)
   ///
   /// # Performance Note
@@ -138,7 +138,7 @@ impl PixelRenderer {
   /// errors that occur when creating new contexts/surfaces on each render call.
   /// Resources are cached per-window and reused across all PixelRenderer instances.
   #[napi]
-  pub fn render(&self, window: &crate::tao::structs::Window, buffer: Buffer) -> napi::Result<()> {
+  pub fn render(&self, window: &crate::winit::structs::Window, buffer: Buffer) -> napi::Result<()> {
     let window_arc = window.inner.as_ref().ok_or_else(|| {
       napi::Error::new(
         napi::Status::GenericFailure,
@@ -213,7 +213,7 @@ impl PixelRenderer {
   fn render_x11_cached(
     &self,
     window_id: u64,
-    window: &tao::window::Window,
+    window: &winit::window::Window,
     buffer: &[u8],
     window_width: u32,
     window_height: u32,
@@ -380,7 +380,7 @@ impl PixelRenderer {
   fn render_x11_cached(
     &self,
     _window_id: u64,
-    _window: &tao::window::Window,
+    _window: &winit::window::Window,
     _buffer: &[u8],
     _window_width: u32,
     _window_height: u32,
@@ -400,7 +400,7 @@ impl PixelRenderer {
   fn render_wayland_cached(
     &self,
     window_id: u64,
-    window: &tao::window::Window,
+    window: &winit::window::Window,
     buffer: &[u8],
     window_width: u32,
     window_height: u32,
@@ -412,8 +412,8 @@ impl PixelRenderer {
     // while still caching across render calls. We store by window_id to handle
     // multiple windows correctly.
     thread_local! {
-      static CONTEXT: RefCell<Option<softbuffer::Context<&'static tao::window::Window>>> = const { RefCell::new(None) };
-      static SURFACE: RefCell<Option<softbuffer::Surface<&'static tao::window::Window, &'static tao::window::Window>>> = const { RefCell::new(None) };
+      static CONTEXT: RefCell<Option<softbuffer::Context<&'static winit::window::Window>>> = const { RefCell::new(None) };
+      static SURFACE: RefCell<Option<softbuffer::Surface<&'static winit::window::Window, &'static winit::window::Window>>> = const { RefCell::new(None) };
       static LAST_WINDOW_ID: RefCell<u64> = const { RefCell::new(0) };
     }
 
@@ -426,7 +426,7 @@ impl PixelRenderer {
       // SAFETY: We need to extend the lifetime of the window reference.
       // This is safe because the window is guaranteed to be alive during rendering
       // and we clean up when switching to a different window.
-      let window_ref: &'static tao::window::Window = unsafe { std::mem::transmute(window) };
+      let window_ref: &'static winit::window::Window = unsafe { std::mem::transmute(window) };
 
       let context = softbuffer::Context::new(window_ref).map_err(|e| {
         napi::Error::new(
@@ -558,7 +558,7 @@ impl PixelRenderer {
   fn render_wayland_cached(
     &self,
     _window_id: u64,
-    _window: &tao::window::Window,
+    _window: &winit::window::Window,
     _buffer: &[u8],
     _window_width: u32,
     _window_height: u32,
@@ -575,7 +575,7 @@ impl PixelRenderer {
   #[deprecated(since = "0.1.0", note = "Use render_wayland_cached instead")]
   fn render_wayland(
     &self,
-    _window: &tao::window::Window,
+    _window: &winit::window::Window,
     _buffer: &[u8],
     _window_width: u32,
     _window_height: u32,
@@ -597,7 +597,7 @@ fn calculate_scaled_dimensions(
   window_height: u32,
   scale_mode: ScaleMode,
 ) -> (u32, u32, u32, u32) {
-  use crate::tao::enums::ScaleMode;
+  use crate::winit::enums::ScaleMode;
 
   match scale_mode {
     ScaleMode::Stretch => (0, 0, window_width, window_height),
@@ -846,7 +846,7 @@ fn copy_buffer_scaled_softbuffer(
 /// errors. For repeated rendering, create a [`PixelRenderer`] instance and reuse it.
 #[napi]
 pub fn render_pixels(
-  window: &crate::tao::structs::Window,
+  window: &crate::winit::structs::Window,
   buffer: Buffer,
   buffer_width: u32,
   buffer_height: u32,

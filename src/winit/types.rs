@@ -1,4 +1,4 @@
-//! Tao type aliases
+//! Winit type aliases
 //!
 //! This module contains all type aliases from the tao crate.
 

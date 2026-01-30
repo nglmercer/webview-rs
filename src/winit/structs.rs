@@ -1,4 +1,4 @@
-//! Tao structs
+//! Winit structs
 //!
 //! This module contains all structs from the tao crate.
 
@@ -7,13 +7,13 @@ use napi_derive::napi;
 use std::env;
 use std::sync::{Arc, Mutex};
 
-use crate::tao::enums::{
-  CursorIcon, ModifiersState, MouseButton, MouseButtonState, TaoTheme, WindowEvent,
+use crate::winit::enums::{
+  CursorIcon, ModifiersState, MouseButton, MouseButtonState, WinitTheme, WindowEvent,
 };
-use crate::tao::types::Result;
+use crate::winit::types::Result;
 
 #[cfg(target_os = "macos")]
-use tao::platform::macos::WindowBuilderExtMacOS;
+use winit::platform::macos::WindowBuilderExtMacOS;
 #[cfg(any(
   target_os = "linux",
   target_os = "dragonfly",
@@ -21,9 +21,17 @@ use tao::platform::macos::WindowBuilderExtMacOS;
   target_os = "netbsd",
   target_os = "openbsd"
 ))]
-use tao::platform::unix::WindowBuilderExtUnix;
+use winit::platform::x11::WindowBuilderExtX11;
+#[cfg(any(
+  target_os = "linux",
+  target_os = "dragonfly",
+  target_os = "freebsd",
+  target_os = "netbsd",
+  target_os = "openbsd"
+))]
+use winit::platform::unix::WindowBuilderExtUnix;
 #[cfg(target_os = "windows")]
-use tao::platform::windows::WindowBuilderExtWindows;
+use winit::platform::windows::WindowBuilderExtWindows;
 
 /// Forward declaration for MonitorInfo to avoid circular dependencies
 #[napi(object)]
@@ -97,7 +105,7 @@ pub struct WindowOptions {
   /// The icon of window.
   pub icon: Option<Buffer>,
   /// The theme of window.
-  pub theme: Option<TaoTheme>,
+  pub theme: Option<WinitTheme>,
   /// Whether to force X11 backend on Linux (default: auto-detect)
   pub force_x11: Option<bool>,
   /// Whether to force Wayland backend on Linux (default: auto-detect)
@@ -211,7 +219,7 @@ pub struct HiDpiScaling {
 #[napi(object)]
 pub struct ThemeChangeDetails {
   /// The new theme.
-  pub new_theme: TaoTheme,
+  pub new_theme: WinitTheme,
 }
 
 /// Cursor icon change details.
@@ -314,16 +322,16 @@ pub struct WindowAttributes {
   /// The icon of window.
   pub icon: Option<Buffer>,
   /// The theme of window.
-  pub theme: Option<TaoTheme>,
+  pub theme: Option<WinitTheme>,
   /// Whether to force X11 backend on Linux (default: auto-detect)
   pub force_x11: Option<bool>,
   /// Whether to force Wayland backend on Linux (default: auto-detect)
   pub force_wayland: Option<bool>,
 }
 
-/// Progress bar data from Tao.
+/// Progress bar data from Winit.
 #[napi(object)]
-pub struct TaoProgressBar {
+pub struct WinitProgressBar {
   /// The progress state.
   pub state: String,
   /// The progress value (0-100).
@@ -345,9 +353,9 @@ pub struct Icon {
 #[napi]
 pub struct EventLoop {
   #[allow(dead_code)]
-  pub(crate) inner: Option<tao::event_loop::EventLoop<()>>,
+  pub(crate) inner: Option<winit::event_loop::EventLoop<()>>,
   #[allow(dead_code)]
-  pub(crate) proxy: Option<tao::event_loop::EventLoopProxy<()>>,
+  pub(crate) proxy: Option<winit::event_loop::EventLoopProxy<()>>,
 }
 
 /// Global flag to track if an EventLoop has been created in this process.
@@ -378,7 +386,7 @@ impl EventLoop {
       }
     }
 
-    let event_loop = tao::event_loop::EventLoop::new();
+    let event_loop = winit::event_loop::EventLoop::new();
     let proxy = event_loop.create_proxy();
     Ok(Self {
       inner: Some(event_loop),
@@ -391,13 +399,13 @@ impl EventLoop {
   pub fn run(&mut self) -> Result<()> {
     if let Some(event_loop) = self.inner.take() {
       event_loop.run(move |event, _, control_flow| {
-        *control_flow = tao::event_loop::ControlFlow::Wait;
-        if let tao::event::Event::WindowEvent {
-          event: tao::event::WindowEvent::CloseRequested,
+        *control_flow = winit::event_loop::ControlFlow::Wait;
+        if let winit::event::Event::WindowEvent {
+          event: winit::event::WindowEvent::CloseRequested,
           ..
         } = event
         {
-          *control_flow = tao::event_loop::ControlFlow::Exit;
+          *control_flow = winit::event_loop::ControlFlow::Exit;
         }
       });
     }
@@ -419,19 +427,19 @@ impl EventLoop {
         target_os = "macos",
       ))]
       {
-        use tao::platform::run_return::EventLoopExtRunReturn;
+        use winit::platform::run_return::EventLoopExtRunReturn;
         event_loop.run_return(|event, _, control_flow| {
-          *control_flow = tao::event_loop::ControlFlow::Poll;
+          *control_flow = winit::event_loop::ControlFlow::Poll;
           match event {
-            tao::event::Event::WindowEvent {
-              event: tao::event::WindowEvent::CloseRequested,
+            winit::event::Event::WindowEvent {
+              event: winit::event::WindowEvent::CloseRequested,
               ..
             } => {
               keep_running = false;
-              *control_flow = tao::event_loop::ControlFlow::Exit;
+              *control_flow = winit::event_loop::ControlFlow::Exit;
             }
-            tao::event::Event::RedrawEventsCleared => {
-              *control_flow = tao::event_loop::ControlFlow::Exit;
+            winit::event::Event::RedrawEventsCleared => {
+              *control_flow = winit::event_loop::ControlFlow::Exit;
             }
             _ => {}
           }
@@ -453,7 +461,7 @@ impl EventLoop {
 /// Builder for creating event loops.
 #[napi]
 pub struct EventLoopBuilder {
-  inner: Option<tao::event_loop::EventLoopBuilder<()>>,
+  inner: Option<winit::event_loop::EventLoopBuilder<()>>,
   force_x11: Option<bool>,
   force_wayland: Option<bool>,
 }
@@ -464,7 +472,7 @@ impl EventLoopBuilder {
   #[napi(constructor)]
   pub fn new() -> Result<Self> {
     Ok(Self {
-      inner: Some(tao::event_loop::EventLoopBuilder::new()),
+      inner: Some(winit::event_loop::EventLoopBuilder::new()),
       force_x11: None,
       force_wayland: None,
     })
@@ -540,7 +548,7 @@ impl EventLoopBuilder {
 #[napi]
 pub struct EventLoopProxy {
   #[allow(dead_code)]
-  inner: Option<tao::event_loop::EventLoopProxy<()>>,
+  inner: Option<winit::event_loop::EventLoopProxy<()>>,
 }
 
 #[napi]
@@ -568,14 +576,14 @@ impl EventLoopProxy {
 #[napi]
 pub struct EventLoopWindowTarget {
   #[allow(dead_code)]
-  inner: Option<tao::event_loop::EventLoopWindowTarget<()>>,
+  inner: Option<winit::event_loop::EventLoopWindowTarget<()>>,
 }
 
 /// Window for displaying content.
 #[napi]
 pub struct Window {
   #[allow(dead_code)]
-  pub(crate) inner: Option<Arc<Mutex<tao::window::Window>>>,
+  pub(crate) inner: Option<Arc<Mutex<winit::window::Window>>>,
 }
 
 #[napi]
@@ -706,7 +714,7 @@ impl Window {
       inner
         .lock()
         .unwrap()
-        .set_outer_position(tao::dpi::PhysicalPosition::new(x as i32, y as i32));
+        .set_outer_position(winit::dpi::PhysicalPosition::new(x as i32, y as i32));
     }
     Ok(())
   }
@@ -735,7 +743,7 @@ impl Window {
       inner
         .lock()
         .unwrap()
-        .set_inner_size(tao::dpi::PhysicalSize::new(width as u32, height as u32));
+        .set_inner_size(winit::dpi::PhysicalSize::new(width as u32, height as u32));
     }
     Ok(())
   }
@@ -826,36 +834,36 @@ impl Window {
   #[napi]
   pub fn set_cursor_icon(&self, cursor: CursorIcon) -> Result<()> {
     if let Some(inner) = &self.inner {
-      let tao_cursor = match cursor {
-        CursorIcon::Default => tao::window::CursorIcon::Default,
-        CursorIcon::Crosshair => tao::window::CursorIcon::Crosshair,
-        CursorIcon::Hand => tao::window::CursorIcon::Hand,
-        CursorIcon::Arrow => tao::window::CursorIcon::Arrow,
-        CursorIcon::Move => tao::window::CursorIcon::Move,
-        CursorIcon::Text => tao::window::CursorIcon::Text,
-        CursorIcon::Wait => tao::window::CursorIcon::Wait,
-        CursorIcon::Help => tao::window::CursorIcon::Help,
-        CursorIcon::Progress => tao::window::CursorIcon::Progress,
-        CursorIcon::NotAllowed => tao::window::CursorIcon::NotAllowed,
-        CursorIcon::EastResize => tao::window::CursorIcon::EResize,
-        CursorIcon::NorthResize => tao::window::CursorIcon::NResize,
-        CursorIcon::NortheastResize => tao::window::CursorIcon::NeResize,
-        CursorIcon::NorthwestResize => tao::window::CursorIcon::NwResize,
-        CursorIcon::SouthResize => tao::window::CursorIcon::SResize,
-        CursorIcon::SoutheastResize => tao::window::CursorIcon::SeResize,
-        CursorIcon::SouthwestResize => tao::window::CursorIcon::SwResize,
-        CursorIcon::WestResize => tao::window::CursorIcon::WResize,
-        CursorIcon::NorthSouthResize => tao::window::CursorIcon::NsResize,
-        CursorIcon::EastWestResize => tao::window::CursorIcon::EwResize,
-        CursorIcon::NortheastSouthwestResize => tao::window::CursorIcon::NeswResize,
-        CursorIcon::NorthwestSoutheastResize => tao::window::CursorIcon::NwseResize,
-        CursorIcon::ColumnResize => tao::window::CursorIcon::ColResize,
-        CursorIcon::RowResize => tao::window::CursorIcon::RowResize,
-        CursorIcon::AllScroll => tao::window::CursorIcon::AllScroll,
-        CursorIcon::ZoomIn => tao::window::CursorIcon::ZoomIn,
-        CursorIcon::ZoomOut => tao::window::CursorIcon::ZoomOut,
+      let winit_cursor = match cursor {
+        CursorIcon::Default => winit::window::CursorIcon::Default,
+        CursorIcon::Crosshair => winit::window::CursorIcon::Crosshair,
+        CursorIcon::Hand => winit::window::CursorIcon::Hand,
+        CursorIcon::Arrow => winit::window::CursorIcon::Arrow,
+        CursorIcon::Move => winit::window::CursorIcon::Move,
+        CursorIcon::Text => winit::window::CursorIcon::Text,
+        CursorIcon::Wait => winit::window::CursorIcon::Wait,
+        CursorIcon::Help => winit::window::CursorIcon::Help,
+        CursorIcon::Progress => winit::window::CursorIcon::Progress,
+        CursorIcon::NotAllowed => winit::window::CursorIcon::NotAllowed,
+        CursorIcon::EastResize => winit::window::CursorIcon::EResize,
+        CursorIcon::NorthResize => winit::window::CursorIcon::NResize,
+        CursorIcon::NortheastResize => winit::window::CursorIcon::NeResize,
+        CursorIcon::NorthwestResize => winit::window::CursorIcon::NwResize,
+        CursorIcon::SouthResize => winit::window::CursorIcon::SResize,
+        CursorIcon::SoutheastResize => winit::window::CursorIcon::SeResize,
+        CursorIcon::SouthwestResize => winit::window::CursorIcon::SwResize,
+        CursorIcon::WestResize => winit::window::CursorIcon::WResize,
+        CursorIcon::NorthSouthResize => winit::window::CursorIcon::NsResize,
+        CursorIcon::EastWestResize => winit::window::CursorIcon::EwResize,
+        CursorIcon::NortheastSouthwestResize => winit::window::CursorIcon::NeswResize,
+        CursorIcon::NorthwestSoutheastResize => winit::window::CursorIcon::NwseResize,
+        CursorIcon::ColumnResize => winit::window::CursorIcon::ColResize,
+        CursorIcon::RowResize => winit::window::CursorIcon::RowResize,
+        CursorIcon::AllScroll => winit::window::CursorIcon::AllScroll,
+        CursorIcon::ZoomIn => winit::window::CursorIcon::ZoomIn,
+        CursorIcon::ZoomOut => winit::window::CursorIcon::ZoomOut,
       };
-      inner.lock().unwrap().set_cursor_icon(tao_cursor);
+      inner.lock().unwrap().set_cursor_icon(winit_cursor);
     }
     Ok(())
   }
@@ -867,8 +875,8 @@ impl Window {
       let _ = inner
         .lock()
         .unwrap()
-        .set_cursor_position(tao::dpi::Position::Physical(
-          tao::dpi::PhysicalPosition::new(x as i32, y as i32),
+        .set_cursor_position(winit::dpi::Position::Physical(
+          winit::dpi::PhysicalPosition::new(x as i32, y as i32),
         ));
     }
     Ok(())
@@ -904,26 +912,26 @@ impl Window {
 
   /// Sets the window theme.
   #[napi]
-  pub fn set_theme(&self, theme: TaoTheme) -> Result<()> {
+  pub fn set_theme(&self, theme: WinitTheme) -> Result<()> {
     if let Some(inner) = &self.inner {
-      let tao_theme = match theme {
-        TaoTheme::Light => tao::window::Theme::Light,
-        TaoTheme::Dark => tao::window::Theme::Dark,
+      let winit_theme = match theme {
+        WinitTheme::Light => winit::window::Theme::Light,
+        WinitTheme::Dark => winit::window::Theme::Dark,
       };
-      inner.lock().unwrap().set_theme(Some(tao_theme));
+      inner.lock().unwrap().set_theme(Some(winit_theme));
     }
     Ok(())
   }
 
   /// Gets the window theme.
   #[napi]
-  pub fn theme(&self) -> Result<Option<TaoTheme>> {
+  pub fn theme(&self) -> Result<Option<WinitTheme>> {
     if let Some(inner) = &self.inner {
       let theme = inner.lock().unwrap().theme();
       Ok(Some(match theme {
-        tao::window::Theme::Light => TaoTheme::Light,
-        tao::window::Theme::Dark => TaoTheme::Dark,
-        _ => TaoTheme::Light,
+        winit::window::Theme::Light => WinitTheme::Light,
+        winit::window::Theme::Dark => WinitTheme::Dark,
+        _ => WinitTheme::Light,
       }))
     } else {
       Ok(None)
@@ -934,7 +942,7 @@ impl Window {
   #[napi]
   pub fn set_window_icon(&self, width: u32, height: u32, rgba: Buffer) -> Result<()> {
     if let Some(inner) = &self.inner {
-      let icon = tao::window::Icon::from_rgba(rgba.to_vec(), width, height).map_err(|e| {
+      let icon = winit::window::Icon::from_rgba(rgba.to_vec(), width, height).map_err(|e| {
         napi::Error::new(napi::Status::GenericFailure, format!("Invalid icon: {}", e))
       })?;
       inner.lock().unwrap().set_window_icon(Some(icon));
@@ -975,7 +983,7 @@ impl Window {
 pub struct WindowBuilder {
   attributes: WindowAttributes,
   #[allow(dead_code)]
-  inner: Option<tao::window::WindowBuilder>,
+  inner: Option<winit::window::WindowBuilder>,
 }
 
 #[napi]
@@ -1095,7 +1103,7 @@ impl WindowBuilder {
 
   /// Sets the window theme.
   #[napi]
-  pub fn with_theme(&mut self, theme: TaoTheme) -> Result<&Self> {
+  pub fn with_theme(&mut self, theme: WinitTheme) -> Result<&Self> {
     self.attributes.theme = Some(theme);
     Ok(self)
   }
@@ -1126,7 +1134,7 @@ impl WindowBuilder {
     })?;
 
     // Detect platform information
-    let platform_info = crate::tao::platform::platform_info();
+    let platform_info = crate::winit::platform::platform_info();
 
     println!(
       "Building window with transparency: {}, platform: {:?}",
@@ -1138,9 +1146,9 @@ impl WindowBuilder {
       println!("Warning: Window positioning is not supported on Wayland, ignoring position");
     }
 
-    let mut builder = tao::window::WindowBuilder::new()
+    let mut builder = winit::window::WindowBuilder::new()
       .with_title(&self.attributes.title)
-      .with_inner_size(tao::dpi::LogicalSize::new(
+      .with_inner_size(winit::dpi::LogicalSize::new(
         self.attributes.width,
         self.attributes.height,
       ))
@@ -1196,7 +1204,7 @@ impl WindowBuilder {
     if let Some(x) = self.attributes.x {
       if let Some(y) = self.attributes.y {
         if platform_info.supports_positioning {
-          builder = builder.with_position(tao::dpi::LogicalPosition::new(x, y));
+          builder = builder.with_position(winit::dpi::LogicalPosition::new(x, y));
         } else {
           println!(
             "Warning: Window positioning is not supported on {:?}, ignoring position",

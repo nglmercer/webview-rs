@@ -7,7 +7,7 @@ use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use std::sync::{Arc, Mutex};
 
-use crate::tao::structs::EventLoop;
+use crate::winit::structs::EventLoop;
 use crate::wry::enums::WryTheme;
 use crate::wry::types::Result;
 #[cfg(any(
@@ -17,7 +17,7 @@ use crate::wry::types::Result;
   target_os = "netbsd",
   target_os = "openbsd"
 ))]
-use tao::platform::unix::WindowExtUnix;
+use winit::platform::unix::WindowExtUnix;
 #[cfg(any(
   target_os = "linux",
   target_os = "dragonfly",
@@ -474,7 +474,7 @@ impl WebViewBuilder {
   #[napi]
   pub fn build_on_window(
     &mut self,
-    window: &crate::tao::structs::Window,
+    window: &crate::winit::structs::Window,
     label: String,
     ipc_listeners_override: Option<Arc<Mutex<Vec<IpcHandler>>>>,
   ) -> Result<WebView> {
@@ -506,9 +506,9 @@ impl WebViewBuilder {
 
     // Set bounds if provided
     webview_builder = webview_builder.with_bounds(wry::Rect {
-      position: tao::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)
+      position: winit::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)
         .into(),
-      size: tao::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)
+      size: winit::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)
         .into(),
     });
 
@@ -646,9 +646,9 @@ impl WebViewBuilder {
         "Event loop already running or consumed".to_string(),
       )
     })?;
-    let mut window_builder = tao::window::WindowBuilder::new()
+    let mut window_builder = winit::window::WindowBuilder::new()
       .with_title(self.attributes.title.as_deref().unwrap_or("WebView"))
-      .with_inner_size(tao::dpi::LogicalSize::new(
+      .with_inner_size(winit::dpi::LogicalSize::new(
         self.attributes.width,
         self.attributes.height,
       ))
@@ -662,7 +662,7 @@ impl WebViewBuilder {
 
     // Set position if provided
     if self.attributes.x != 0 || self.attributes.y != 0 {
-      window_builder = window_builder.with_position(tao::dpi::LogicalPosition::new(
+      window_builder = window_builder.with_position(winit::dpi::LogicalPosition::new(
         self.attributes.x,
         self.attributes.y,
       ));
@@ -698,9 +698,9 @@ impl WebViewBuilder {
 
     // Set bounds
     webview_builder = webview_builder.with_bounds(wry::Rect {
-      position: tao::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)
+      position: winit::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)
         .into(),
-      size: tao::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)
+      size: winit::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)
         .into(),
     });
 
