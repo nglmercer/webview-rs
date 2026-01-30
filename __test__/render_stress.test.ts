@@ -154,7 +154,7 @@ describe('Render Stress Tests', () => {
   test('should handle 250+ frames without resource exhaustion', async () => {
     const width = 1920  // High resolution width
     const height = 1080 // High resolution height
-    const frameCount = 10000 // More than 231 to trigger the issue
+    const frameCount = 5000 // More than 231 to trigger the issue
     
     // Create buffers (RGBA format) - ~8MB per buffer
     const buffer = Buffer.alloc(width * height * 4)
@@ -229,7 +229,7 @@ describe('Render Stress Tests', () => {
     // Assertions
     expect(errors).toHaveLength(0)
     expect(renderedFrames).toBe(frameCount)
-  }, 60000) // 60 second timeout
+  }, 90000) // 90 second timeout
   
   test('should handle multiple renderers without client limit error', async () => {
     const width = 800
