@@ -13,7 +13,7 @@ use crate::winit::enums::{
 use crate::winit::types::Result;
 
 #[cfg(target_os = "macos")]
-use winit::platform::macos::WindowBuilderExtMacOS;
+use winit::platform::macos::WindowAttributesExtMacOS;
 #[cfg(any(
   target_os = "linux",
   target_os = "dragonfly",
@@ -22,14 +22,6 @@ use winit::platform::macos::WindowBuilderExtMacOS;
   target_os = "openbsd"
 ))]
 use winit::platform::x11::WindowBuilderExtX11;
-#[cfg(any(
-  target_os = "linux",
-  target_os = "dragonfly",
-  target_os = "freebsd",
-  target_os = "netbsd",
-  target_os = "openbsd"
-))]
-use winit::platform::unix::WindowBuilderExtUnix;
 #[cfg(target_os = "windows")]
 use winit::platform::windows::WindowBuilderExtWindows;
 
@@ -403,14 +395,14 @@ impl EventLoop {
   #[napi]
   pub fn run(&mut self) -> Result<()> {
     if let Some(event_loop) = self.inner.take() {
-      let _ = event_loop.run(move |event, event_loop_target| {
-        event_loop_target.set_control_flow(winit::event_loop::ControlFlow::Wait);
+      let _ = event_loop.run(move |event, elwt| {
+        elwt.set_control_flow(winit::event_loop::ControlFlow::Wait);
         if let winit::event::Event::WindowEvent {
           event: winit::event::WindowEvent::CloseRequested,
           ..
         } = event
         {
-          event_loop_target.exit();
+          elwt.exit();
         }
       });
     }
@@ -432,23 +424,26 @@ impl EventLoop {
         target_os = "macos",
       ))]
       {
-        use winit::platform::run_return::EventLoopExtRunReturn;
-        let _ = event_loop.run_return(|event, event_loop_target| {
-          event_loop_target.set_control_flow(winit::event_loop::ControlFlow::Poll);
+        use winit::platform::pump_events::EventLoopExtPumpEvents;
+        let status = event_loop.pump_events(None, |event, elwt| {
+          elwt.set_control_flow(winit::event_loop::ControlFlow::Poll);
           match event {
             winit::event::Event::WindowEvent {
               event: winit::event::WindowEvent::CloseRequested,
               ..
             } => {
               keep_running = false;
-              event_loop_target.exit();
+              elwt.exit();
             }
-            winit::event::Event::RedrawEventsCleared => {
-              event_loop_target.exit();
+            winit::event::Event::AboutToWait => {
+              elwt.exit();
             }
             _ => {}
           }
         });
+        if let winit::platform::pump_events::PumpStatus::Exit(_) = status {
+          keep_running = false;
+        }
       }
     }
     Ok(keep_running)
@@ -540,7 +535,13 @@ impl EventLoopBuilder {
           "EventLoopBuilder already consumed".to_string(),
         )
       })?
-      .build();
+      .build()
+      .map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Failed to build event loop: {}", e),
+        )
+      })?;
     let proxy = event_loop.create_proxy();
     Ok(EventLoop {
       inner: Some(event_loop),
@@ -872,7 +873,7 @@ impl Window {
         CursorIcon::ZoomIn => winit::window::CursorIcon::ZoomIn,
         CursorIcon::ZoomOut => winit::window::CursorIcon::ZoomOut,
       };
-      inner.lock().unwrap().set_cursor(winit_cursor);
+      inner.lock().unwrap().set_cursor_icon(winit_cursor);
     }
     Ok(())
   }
@@ -952,7 +953,6 @@ impl Window {
   #[napi]
   pub fn set_ignore_cursor_events(&self, ignore: bool) -> Result<()> {
     if let Some(inner) = &self.inner {
-      // Use set_cursor_hittest if available, inversely related to ignore
       let _ = inner.lock().unwrap().set_cursor_hittest(!ignore);
     }
     Ok(())
@@ -1145,6 +1145,11 @@ impl WindowBuilder {
       println!("Warning: Window positioning is not supported on Wayland, ignoring position");
     }
 
+    let window_level = if self.attributes.always_on_top {
+      winit::window::WindowLevel::AlwaysOnTop
+    } else {
+      winit::window::WindowLevel::Normal
+    };
     let mut builder = winit::window::WindowBuilder::new()
       .with_title(&self.attributes.title)
       .with_inner_size(winit::dpi::LogicalSize::new(
@@ -1153,7 +1158,7 @@ impl WindowBuilder {
       ))
       .with_resizable(self.attributes.resizable)
       .with_decorations(self.attributes.decorated)
-      .with_always_on_top(self.attributes.always_on_top)
+      .with_window_level(window_level)
       .with_visible(self.attributes.visible)
       .with_transparent(self.attributes.transparent);
 
@@ -1165,18 +1170,9 @@ impl WindowBuilder {
       target_os = "openbsd"
     ))]
     {
-      // Handle platform-specific transparency settings
-      if self.attributes.transparent {
-        // Only enable RGBA visual on X11 or when forced
-        if platform_info.is_x11() || self.attributes.force_x11 == Some(true) {
-          builder = builder.with_rgba_visual(true);
-        }
-        // On Wayland, transparency is handled differently
-        // We don't set with_rgba_visual on Wayland as it's X11-specific
-      }
-
-      // Backend selection is already handled before platform detection
-      // This block is kept for any additional platform-specific settings if needed
+      // Transparency is handled via with_transparent() which is already set
+      // X11-specific visual selection would require knowing the specific visual ID
+      // For transparency, winit handles this internally when with_transparent(true) is set
     }
 
     #[cfg(target_os = "macos")]
@@ -1197,7 +1193,7 @@ impl WindowBuilder {
 
     builder = builder
       .with_maximized(self.attributes.maximized)
-      .with_focused(self.attributes.focused);
+      .with_active(self.attributes.focused);
 
     // Set position if provided (only supported on X11, not Wayland)
     if let Some(x) = self.attributes.x {

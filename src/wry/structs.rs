@@ -17,14 +17,6 @@ use crate::wry::types::Result;
   target_os = "netbsd",
   target_os = "openbsd"
 ))]
-use winit::platform::unix::WindowExtUnix;
-#[cfg(any(
-  target_os = "linux",
-  target_os = "dragonfly",
-  target_os = "freebsd",
-  target_os = "netbsd",
-  target_os = "openbsd"
-))]
 use wry::WebViewBuilderExtUnix;
 
 /// An initialization script to be run when creating a webview.
@@ -506,10 +498,8 @@ impl WebViewBuilder {
 
     // Set bounds if provided
     webview_builder = webview_builder.with_bounds(wry::Rect {
-      position: winit::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)
-        .into(),
-      size: winit::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)
-        .into(),
+      position: wry::dpi::Position::Logical(wry::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)),
+      size: wry::dpi::Size::Logical(wry::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)),
     });
 
     // Set URL or HTML
@@ -587,6 +577,11 @@ impl WebViewBuilder {
         "Event loop already running or consumed".to_string(),
       )
     })?;
+    let window_level = if self.attributes.always_on_top {
+      winit::window::WindowLevel::AlwaysOnTop
+    } else {
+      winit::window::WindowLevel::Normal
+    };
     let mut window_builder = winit::window::WindowBuilder::new()
       .with_title(self.attributes.title.as_deref().unwrap_or("WebView"))
       .with_inner_size(winit::dpi::LogicalSize::new(
@@ -595,11 +590,11 @@ impl WebViewBuilder {
       ))
       .with_resizable(self.attributes.resizable)
       .with_decorations(self.attributes.decorations)
-      .with_always_on_top(self.attributes.always_on_top)
+      .with_window_level(window_level)
       .with_visible(self.attributes.visible)
       .with_transparent(self.attributes.transparent)
       .with_maximized(self.attributes.maximized)
-      .with_focused(self.attributes.focused);
+      .with_active(self.attributes.focused);
 
     // Set position if provided
     if self.attributes.x != 0 || self.attributes.y != 0 {
@@ -639,10 +634,8 @@ impl WebViewBuilder {
 
     // Set bounds
     webview_builder = webview_builder.with_bounds(wry::Rect {
-      position: winit::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)
-        .into(),
-      size: winit::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)
-        .into(),
+      position: wry::dpi::Position::Logical(wry::dpi::LogicalPosition::new(self.attributes.x as f64, self.attributes.y as f64)),
+      size: wry::dpi::Size::Logical(wry::dpi::LogicalSize::new(self.attributes.width as f64, self.attributes.height as f64)),
     });
 
     // Set URL or HTML

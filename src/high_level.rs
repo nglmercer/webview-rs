@@ -21,7 +21,7 @@ pub(crate) enum PendingWebviewAction {
 use crate::winit::enums::{WinitControlFlow, WinitFullscreenType, WinitTheme};
 use crate::winit::structs::Position;
 #[cfg(target_os = "macos")]
-use winit::platform::macos::WindowBuilderExtMacOS;
+use winit::platform::macos::WindowAttributesExtMacOS;
 #[cfg(any(
   target_os = "linux",
   target_os = "dragonfly",
@@ -30,14 +30,7 @@ use winit::platform::macos::WindowBuilderExtMacOS;
   target_os = "openbsd"
 ))]
 use winit::platform::x11::WindowBuilderExtX11;
-#[cfg(any(
-  target_os = "linux",
-  target_os = "dragonfly",
-  target_os = "freebsd",
-  target_os = "netbsd",
-  target_os = "openbsd"
-))]
-use winit::platform::wayland::WindowBuilderExtWayland;
+
 #[cfg(target_os = "windows")]
 use winit::platform::windows::WindowBuilderExtWindows;
 
@@ -275,6 +268,11 @@ impl Application {
   fn process_pending_items(&self, event_loop_target: &winit::event_loop::EventLoopWindowTarget<()>) {
     let mut pending = self.windows_to_create.lock().unwrap();
     for (opts, win_handle, webviews_to_create) in pending.drain(..) {
+      let window_level = if opts.always_on_top.unwrap_or(false) {
+        winit::window::WindowLevel::AlwaysOnTop
+      } else {
+        winit::window::WindowLevel::Normal
+      };
       let mut builder = winit::window::WindowBuilder::new()
         .with_title(opts.title.clone().unwrap_or_default())
         .with_inner_size(winit::dpi::LogicalSize::new(
@@ -283,9 +281,9 @@ impl Application {
         ))
         .with_resizable(opts.resizable.unwrap_or(true))
         .with_decorations(opts.decorations.unwrap_or(true))
-        .with_always_on_top(opts.always_on_top.unwrap_or(false))
+        .with_window_level(window_level)
         .with_maximized(opts.maximized.unwrap_or(false))
-        .with_focused(opts.focused.unwrap_or(true))
+        .with_active(opts.focused.unwrap_or(true))
         .with_transparent(opts.transparent.unwrap_or(false))
         .with_visible(opts.visible.unwrap_or(true));
 
@@ -308,11 +306,8 @@ impl Application {
           target_os = "openbsd"
         ))]
         {
-          // Check if we are running on X11 or Wayland
-          let using_x11 = std::env::var("WAYLAND_DISPLAY").is_err();
-          if using_x11 {
-             builder = builder.with_rgba_visual(true);
-          }
+          // Transparency is handled via with_transparent() which is already set
+          // winit handles X11 visual selection internally when with_transparent(true) is set
         }
       }
 
@@ -415,15 +410,15 @@ impl Application {
       #[allow(clippy::arc_with_non_send_sync)]
       let app_ref = Arc::new(self.clone_internal());
 
-      let _ = event_loop.run(move |event, event_loop_target| {
-        event_loop_target.set_control_flow(winit::event_loop::ControlFlow::Wait);
+      let _ = event_loop.run(move |event, elwt| {
+        elwt.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
         if *exit_requested.lock().unwrap() {
-          event_loop_target.exit();
+          elwt.exit();
           return;
         }
 
-        app_ref.process_pending_items(event_loop_target);
+        app_ref.process_pending_items(elwt);
 
         if let winit::event::Event::WindowEvent {
           event: winit::event::WindowEvent::CloseRequested,
@@ -439,7 +434,7 @@ impl Application {
               ThreadsafeFunctionCallMode::NonBlocking,
             );
           }
-          event_loop_target.exit();
+          elwt.exit();
         }
       });
     }
@@ -461,7 +456,7 @@ impl Application {
     let mut event_loop_lock = self.event_loop.lock().unwrap();
 
     if let Some(event_loop) = event_loop_lock.as_mut() {
-      use winit::platform::run_return::EventLoopExtRunReturn;
+      use winit::platform::pump_events::EventLoopExtPumpEvents;
 
       let handler_clone = self.handler.clone();
       let exit_requested = self.exit_requested.clone();
@@ -472,10 +467,10 @@ impl Application {
         return false;
       }
 
-      let _ = event_loop.run_return(|event, event_loop_target| {
-        event_loop_target.set_control_flow(winit::event_loop::ControlFlow::Poll);
+      let status = event_loop.pump_events(None, |event, elwt| {
+        elwt.set_control_flow(winit::event_loop::ControlFlow::Poll);
 
-        app_ref.process_pending_items(event_loop_target);
+        app_ref.process_pending_items(elwt);
 
         match event {
           winit::event::Event::WindowEvent {
@@ -492,14 +487,17 @@ impl Application {
               );
             }
             keep_running = false;
-            event_loop_target.exit();
+            elwt.exit();
           }
-          winit::event::Event::RedrawEventsCleared => {
-            event_loop_target.exit();
+          winit::event::Event::AboutToWait => {
+            elwt.exit();
           }
           _ => {}
         }
       });
+      if let winit::platform::pump_events::PumpStatus::Exit(_) = status {
+        keep_running = false;
+      }
     }
     keep_running
   }
