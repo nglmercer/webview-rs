@@ -15,7 +15,7 @@ napi = { version = "3.8.2", default-features = true, features = [
     "compat-mode",
 ] }
 napi-derive = "3.5.1"
-winit = { version = "0.30.12", features = ["rwh_05","wayland"] }
+winit = { version = "0.30.12", features = ["rwh_06","x11"] }
 wry = { version = "0.53.5", features = ["devtools", "fullscreen", "x11"] }
 serde_json = "1"
 softbuffer = "0.4"

@@ -568,84 +568,93 @@ impl WebViewBuilder {
     label: String,
     ipc_listeners_override: Option<Arc<Mutex<Vec<IpcHandler>>>>,
   ) -> Result<WebView> {
-    // Get the event loop reference
-    let el = event_loop.inner.as_ref().ok_or_else(|| {
-      napi::Error::new(
-        napi::Status::GenericFailure,
-        "Event loop already running or consumed".to_string(),
-      )
-    })?;
+    use crate::winit::structs::WindowBuilder;
+    use crate::winit::platform::platform_info;
 
-    // Ensure GTK is initialized on Linux before creating webview
-    // This MUST happen before any window creation for wry to work
+    // Detect platform information
+    let platform_info = platform_info();
+
+    // On Wayland, use wry's own window creation capabilities with GTK
     #[cfg(target_os = "linux")]
-    {
-      use std::sync::Once;
-      static GTK_INIT: Once = Once::new();
-
-      GTK_INIT.call_once(|| {
-        println!("Initializing GTK for WebView...");
-        if let Err(e) = gtk::init() {
-          eprintln!("Failed to initialize GTK: {}", e);
-          std::process::exit(1);
-        }
-        println!("GTK initialized successfully");
-      });
-
-      if !gtk::is_initialized() {
-        return Err(napi::Error::new(
-          napi::Status::GenericFailure,
-          "GTK failed to initialize".to_string(),
-        ));
-      }
-    }
-    let window_level = if self.attributes.always_on_top {
-      winit::window::WindowLevel::AlwaysOnTop
-    } else {
-      winit::window::WindowLevel::Normal
-    };
-    let mut window_attributes = winit::window::WindowAttributes::default()
-      .with_title(self.attributes.title.as_deref().unwrap_or("WebView"))
-      .with_inner_size(winit::dpi::LogicalSize::new(
-        self.attributes.width,
-        self.attributes.height,
-      ))
-      .with_resizable(self.attributes.resizable)
-      .with_decorations(self.attributes.decorations)
-      .with_window_level(window_level)
-      .with_visible(self.attributes.visible)
-      .with_transparent(self.attributes.transparent)
-      .with_maximized(self.attributes.maximized)
-      .with_active(self.attributes.focused);
-
-    // Set position if provided
-    if self.attributes.x != 0 || self.attributes.y != 0 {
-      window_attributes = window_attributes.with_position(winit::dpi::LogicalPosition::new(
-        self.attributes.x,
-        self.attributes.y,
-      ));
+    if platform_info.is_wayland() {
+      return self.build_gtk_wayland(label, ipc_listeners_override);
     }
 
-    #[cfg(target_os = "linux")]
-    {
-      use winit::platform::x11::WindowAttributesExtX11;
+    // On X11 and other platforms, create a winit window and build the webview on it
+    // Create a window builder with the attributes from the webview builder
+    let mut window_builder = WindowBuilder::new()?;
 
-      window_attributes = window_attributes.with_name(&label, &label);
+    // Set window attributes from webview attributes
+    if let Some(title) = &self.attributes.title {
+      window_builder.with_title(title.clone())?;
+    }
+    window_builder.with_inner_size(self.attributes.width, self.attributes.height)?;
+    window_builder.with_position(self.attributes.x as f64, self.attributes.y as f64)?;
+    window_builder.with_resizable(self.attributes.resizable)?;
+    window_builder.with_decorated(self.attributes.decorations)?;
+    window_builder.with_always_on_top(self.attributes.always_on_top)?;
+    window_builder.with_visible(self.attributes.visible)?;
+    window_builder.with_transparent(self.attributes.transparent)?;
+    window_builder.with_maximized(self.attributes.maximized)?;
+    window_builder.with_focused(self.attributes.focused)?;
+    window_builder.with_menubar(self.attributes.menubar)?;
+
+    // Set window icon if provided
+    if let Some(icon) = &self.attributes.icon {
+      // Convert Buffer to Vec<u8> and back to Buffer for ownership transfer
+      let icon_data = icon.to_vec();
+      let icon_buffer = Buffer::from(icon_data);
+      window_builder.with_window_icon(icon_buffer)?;
     }
 
-    // Build the window (using EventLoop method - still functional but deprecated)
-    #[allow(deprecated)]
-    let window = el.create_window(window_attributes).map_err(|e| {
-      napi::Error::new(
-        napi::Status::GenericFailure,
-        format!("Failed to create window: {}", e),
-      )
-    })?;
+    // Set window theme if provided
+    if let Some(theme) = &self.attributes.theme {
+      let winit_theme = match theme {
+        WryTheme::Light => crate::winit::enums::WinitTheme::Light,
+        WryTheme::Dark => crate::winit::enums::WinitTheme::Dark,
+        WryTheme::Auto => crate::winit::enums::WinitTheme::Light, // Default to Light for Auto
+      };
+      window_builder.with_theme(winit_theme)?;
+    }
 
-    // Create webview builder
+    // Build the window
+    let window = window_builder.build(event_loop)?;
+
+    // Build the webview on the window
+    self.build_on_window(&window, label, ipc_listeners_override)
+  }
+
+  /// Builds the webview on Wayland using GTK.
+  #[cfg(target_os = "linux")]
+  fn build_gtk_wayland(
+    &mut self,
+    label: String,
+    ipc_listeners_override: Option<Arc<Mutex<Vec<IpcHandler>>>>,
+  ) -> Result<WebView> {
+    use gtk::prelude::*;
+    use wry::WebViewBuilderExtUnix;
+
+    // Create a GTK window
+    let gtk_window = gtk::ApplicationWindow::builder()
+      .title(self.attributes.title.as_deref().unwrap_or("WebView"))
+      .default_width(self.attributes.width as i32)
+      .default_height(self.attributes.height as i32)
+      .resizable(self.attributes.resizable)
+      .decorated(self.attributes.decorations)
+      .visible(self.attributes.visible)
+      .build();
+
+    // Set window properties
+    if self.attributes.maximized {
+      gtk_window.maximize();
+    }
+    if !self.attributes.focused {
+      gtk_window.set_focus_on_click(false);
+    }
+
+    // Create a webview builder
     let mut webview_builder = wry::WebViewBuilder::new();
 
-    // Set transparency and background color
     webview_builder = webview_builder.with_transparent(self.attributes.transparent);
 
     if let Some(bg_color) = &self.attributes.background_color {
@@ -662,18 +671,6 @@ impl WebViewBuilder {
       webview_builder = webview_builder.with_background_color((0, 0, 0, 0));
     }
 
-    // Set bounds
-    webview_builder = webview_builder.with_bounds(wry::Rect {
-      position: wry::dpi::Position::Logical(wry::dpi::LogicalPosition::new(
-        self.attributes.x as f64,
-        self.attributes.y as f64,
-      )),
-      size: wry::dpi::Size::Logical(wry::dpi::LogicalSize::new(
-        self.attributes.width as f64,
-        self.attributes.height as f64,
-      )),
-    });
-
     // Set URL or HTML
     if let Some(url) = &self.attributes.url {
       webview_builder = webview_builder.with_url(url);
@@ -685,16 +682,7 @@ impl WebViewBuilder {
 
     // Set other attributes
     webview_builder = webview_builder.with_hotkeys_zoom(self.attributes.hotkeys_zoom);
-    #[cfg(any(
-      target_os = "windows",
-      target_os = "macos",
-      target_os = "ios",
-      target_os = "android",
-      target_os = "linux"
-    ))]
-    {
-      webview_builder = webview_builder.with_incognito(self.attributes.incognito);
-    }
+    webview_builder = webview_builder.with_incognito(self.attributes.incognito);
     webview_builder = webview_builder.with_autoplay(self.attributes.autoplay);
     webview_builder = webview_builder.with_clipboard(self.attributes.clipboard);
     webview_builder = webview_builder
@@ -705,7 +693,6 @@ impl WebViewBuilder {
       webview_builder = webview_builder.with_initialization_script(&script.js);
     }
 
-    // Build the webview - use raw-window-handle which is supported on all platforms
     // IPC Handler
     let (webview_builder_with_ipc, listeners) = setup_ipc_handler(
       self.ipc_handler.take(),
@@ -716,10 +703,11 @@ impl WebViewBuilder {
     let ipc_listeners = listeners;
     let webview_builder = webview_builder_with_ipc;
 
-    let webview = webview_builder.build(&window).map_err(|e| {
+    // Build the webview using GTK
+    let webview = webview_builder.build_gtk(&gtk_window).map_err(|e| {
       napi::Error::new(
         napi::Status::GenericFailure,
-        format!("Failed to create webview: {}", e),
+        format!("Failed to create webview on Wayland: {}", e),
       )
     })?;
 

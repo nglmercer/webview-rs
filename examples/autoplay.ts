@@ -1,9 +1,9 @@
 // Autoplay
-import { EventLoop, WebViewBuilder
-    //,WindowBuilder 
+import { EventLoop, WebViewBuilder,
+    WindowBuilder 
 } from "../index.js";
 const eventLoop = new EventLoop();
-//const window = new WindowBuilder().build(eventLoop)
+const window = new WindowBuilder().build(eventLoop)
 
 const webview = new WebViewBuilder()
     .withHtml(`<!DOCTYPE html>
@@ -21,7 +21,6 @@ const webview = new WebViewBuilder()
     `)
     .build(eventLoop,'0')
 console.log(webview.id)
-/*
 //if (!webview.isDevtoolsOpen()) webview.openDevtools();
 eventLoop.run()
 // Now run the app with a polling loop to allow IPC callbacks to process
@@ -30,13 +29,14 @@ const poll = () => {
         window.id;
         webview.id;
         setTimeout(poll, 10);
-    } else {
-        process.exit(0);
-    }
-};
-setInterval(() => {
-    console.log("polling");
-}, 1000);
-poll();
-//app.run();
-*/
+        } else {
+            process.exit(0);
+            }
+            };
+            setInterval(() => {
+                console.log("polling");
+                }, 1000);
+                poll();
+                //app.run();
+                /*
+                */
