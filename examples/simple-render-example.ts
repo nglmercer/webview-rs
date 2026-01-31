@@ -74,16 +74,18 @@ const renderFrame = () => {
 console.log('Starting render example...')
 console.log('Press Ctrl+C to exit')
 
-// Start rendering
-renderFrame()
-
-// Keep the event loop running
+// Keep the event loop running - MUST start polling BEFORE rendering
 const poll = () => {
     if (eventLoop.runIteration()) {
-        window.id;
-        setTimeout(poll, 10);
+        void window.id;
+        setTimeout(poll, 16); // ~60fps
     } else {
         process.exit(0);
     }
 };
+
+// Start the event loop polling first
 poll()
+
+// Start rendering after a short delay to let the window initialize
+setTimeout(renderFrame, 100)

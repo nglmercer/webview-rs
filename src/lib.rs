@@ -7,6 +7,28 @@
 //! in Node.js applications. All methods, APIs, enums, and types are exported
 //! directly for Node.js composition.
 
+// Initialize GTK on Linux before anything else using ctor
+#[cfg(target_os = "linux")]
+use std::sync::Once;
+
+#[cfg(target_os = "linux")]
+static GTK_INIT: Once = Once::new();
+
+#[cfg(target_os = "linux")]
+#[ctor::ctor]
+fn init_gtk() {
+  GTK_INIT.call_once(|| {
+    println!("Initializing GTK at library load...");
+    // Use gtk_init_check which initializes both GTK and GDK
+    let result = unsafe { gtk::ffi::gtk_init_check(std::ptr::null_mut(), std::ptr::null_mut()) };
+    if result == 0 {
+      eprintln!("Failed to initialize GTK/GDK");
+    } else {
+      println!("GTK/GDK initialized successfully at library load");
+    }
+  });
+}
+
 // Wry bindings
 pub mod wry;
 

@@ -19,6 +19,7 @@ use winit::platform::macos::WindowAttributesExtMacOS;
 #[cfg(target_os = "windows")]
 use winit::platform::windows::WindowBuilderExtWindows;
 
+
 /// Forward declaration for MonitorInfo to avoid circular dependencies
 #[napi(object)]
 pub struct MonitorInfo {
@@ -92,10 +93,6 @@ pub struct WindowOptions {
   pub icon: Option<Buffer>,
   /// The theme of window.
   pub theme: Option<WinitTheme>,
-  /// Whether to force X11 backend on Linux (default: auto-detect)
-  pub force_x11: Option<bool>,
-  /// Whether to force Wayland backend on Linux (default: auto-detect)
-  pub force_wayland: Option<bool>,
 }
 
 /// Window size limits.
@@ -309,10 +306,6 @@ pub struct WindowAttributes {
   pub icon: Option<Buffer>,
   /// The theme of window.
   pub theme: Option<WinitTheme>,
-  /// Whether to force X11 backend on Linux (default: auto-detect)
-  pub force_x11: Option<bool>,
-  /// Whether to force Wayland backend on Linux (default: auto-detect)
-  pub force_wayland: Option<bool>,
 }
 
 /// Progress bar data from Winit.
@@ -381,6 +374,17 @@ impl EventLoop {
            Use a single EventLoop instance for all windows instead of creating multiple."
             .to_string(),
         ));
+      }
+
+      // Initialize GTK for webview support
+      // This is required for wry to work properly on Linux
+      if gtk::is_initialized() {
+        println!("GTK already initialized");
+      } else {
+        println!("Initializing GTK...");
+        if let Err(e) = gtk::init() {
+          eprintln!("Warning: Failed to initialize GTK: {}", e);
+        }
       }
     }
 
@@ -585,14 +589,18 @@ impl EventLoop {
   pub fn on_event(&self, handler: Option<ThreadsafeFunction<WindowEventData>>) {
     *self.event_handler.lock().unwrap() = handler;
   }
+
+  /// Gets a reference to the inner event loop for window creation.
+  /// This is used internally by WindowBuilder and WebViewBuilder.
+  pub fn event_loop_ref(&self) -> Option<&winit::event_loop::EventLoop<()>> {
+    self.inner.as_ref()
+  }
 }
 
 /// Builder for creating event loops.
 #[napi]
 pub struct EventLoopBuilder {
-  inner: Option<winit::event_loop::EventLoopBuilder<()>>,
-  force_x11: Option<bool>,
-  force_wayland: Option<bool>,
+  inner: Option<winit::event_loop::EventLoopBuilder<()>>
 }
 
 #[napi]
@@ -601,59 +609,16 @@ impl EventLoopBuilder {
   #[napi(constructor)]
   pub fn new() -> Result<Self> {
     Ok(Self {
-      inner: Some(winit::event_loop::EventLoopBuilder::new()),
-      force_x11: None,
-      force_wayland: None,
+      inner: Some(winit::event_loop::EventLoopBuilder::new())
     })
   }
 
-  /// Forces X11 backend on Linux.
-  /// This must be called before build() to take effect.
-  #[napi]
-  pub fn with_force_x11(&mut self, force: bool) -> Result<&Self> {
-    self.force_x11 = Some(force);
-    Ok(self)
-  }
-
-  /// Forces Wayland backend on Linux.
-  /// This must be called before build() to take effect.
-  #[napi]
-  pub fn with_force_wayland(&mut self, force: bool) -> Result<&Self> {
-    self.force_wayland = Some(force);
-    Ok(self)
-  }
 
   /// Builds the event loop.
   #[napi]
   pub fn build(&mut self) -> Result<EventLoop> {
     // Handle backend selection BEFORE creating the event loop
     // This ensures the environment is set up correctly before tao selects the backend
-    #[cfg(any(
-      target_os = "linux",
-      target_os = "dragonfly",
-      target_os = "freebsd",
-      target_os = "netbsd",
-      target_os = "openbsd"
-    ))]
-    {
-      if self.force_x11 == Some(true) {
-        // Force X11 backend by clearing Wayland environment variables
-        std::env::remove_var("WAYLAND_DISPLAY");
-        // Ensure DISPLAY is set for X11
-        env::set_var("GDK_BACKEND", "x11");
-        if std::env::var("DISPLAY").is_err() {
-          std::env::set_var("DISPLAY", ":0");
-        }
-        println!(
-          "Forcing X11 backend: WAYLAND_DISPLAY cleared, DISPLAY={}",
-          std::env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string())
-        );
-      } else if self.force_wayland == Some(true) {
-        // Force Wayland backend
-        std::env::set_var("WAYLAND_DISPLAY", "wayland-0");
-        println!("Forcing Wayland backend: WAYLAND_DISPLAY=wayland-0");
-      }
-    }
 
     let event_loop = self
       .inner
@@ -1137,8 +1102,6 @@ impl WindowBuilder {
         menubar: true,
         icon: None,
         theme: None,
-        force_x11: None,
-        force_wayland: None,
       },
       inner: None,
     })
@@ -1234,20 +1197,6 @@ impl WindowBuilder {
   #[napi]
   pub fn with_theme(&mut self, theme: WinitTheme) -> Result<&Self> {
     self.attributes.theme = Some(theme);
-    Ok(self)
-  }
-
-  /// Forces X11 backend on Linux.
-  #[napi]
-  pub fn with_force_x11(&mut self, force: bool) -> Result<&Self> {
-    self.attributes.force_x11 = Some(force);
-    Ok(self)
-  }
-
-  /// Forces Wayland backend on Linux.
-  #[napi]
-  pub fn with_force_wayland(&mut self, force: bool) -> Result<&Self> {
-    self.attributes.force_wayland = Some(force);
     Ok(self)
   }
 

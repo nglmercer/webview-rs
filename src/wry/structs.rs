@@ -11,6 +11,9 @@ use crate::winit::structs::EventLoop;
 use crate::wry::enums::WryTheme;
 use crate::wry::types::Result;
 
+#[cfg(target_os = "linux")]
+use gtk::prelude::*;
+
 /// An initialization script to be run when creating a webview.
 #[napi(object)]
 pub struct InitializationScript {
@@ -576,6 +579,30 @@ impl WebViewBuilder {
         "Event loop already running or consumed".to_string(),
       )
     })?;
+
+    // Ensure GTK is initialized on Linux before creating webview
+    // This MUST happen before any window creation for wry to work
+    #[cfg(target_os = "linux")]
+    {
+      use std::sync::Once;
+      static GTK_INIT: Once = Once::new();
+      
+      GTK_INIT.call_once(|| {
+        println!("Initializing GTK for WebView...");
+        if let Err(e) = gtk::init() {
+          eprintln!("Failed to initialize GTK: {}", e);
+          std::process::exit(1);
+        }
+        println!("GTK initialized successfully");
+      });
+      
+      if !gtk::is_initialized() {
+        return Err(napi::Error::new(
+          napi::Status::GenericFailure,
+          "GTK failed to initialize".to_string(),
+        ));
+      }
+    }
     let window_level = if self.attributes.always_on_top {
       winit::window::WindowLevel::AlwaysOnTop
     } else {
@@ -775,7 +802,9 @@ impl WebView {
   #[napi]
   pub fn reload(&self) -> Result<()> {
     if let Some(inner) = &self.inner {
-      let _ = inner.lock().unwrap().reload();
+      // reload() method not available in wry 0.48, use load_url with current URL
+      // or evaluate_script with location.reload()
+      let _ = inner.lock().unwrap().evaluate_script("window.location.reload()");
     }
     Ok(())
   }
