@@ -5,7 +5,6 @@
 use napi::bindgen_prelude::*;
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
-use std::env;
 use std::sync::{Arc, Mutex};
 
 use crate::winit::enums::{

@@ -632,10 +632,8 @@ impl WebViewBuilder {
 
     #[cfg(target_os = "linux")]
     {
-      use winit::platform::wayland::WindowBuilderExtWayland;
       use winit::platform::x11::WindowBuilderExtX11;
 
-      window_builder = WindowBuilderExtWayland::with_name(window_builder, &label, &label);
       window_builder = WindowBuilderExtX11::with_name(window_builder, &label, &label);
     }
 

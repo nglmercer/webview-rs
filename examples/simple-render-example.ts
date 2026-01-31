@@ -35,7 +35,6 @@ const eventLoop = new EventLoop()
 const window = new WindowBuilder()
   .withTitle('Simple Render - Black/White')
   .withInnerSize(width, height)
-  .withForceWayland(true)
   .build(eventLoop)
 
 // Create pixel renderer with options

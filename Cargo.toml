@@ -16,7 +16,7 @@ napi = { version = "3.8.2", default-features = true, features = [
 ] }
 napi-derive = "3.5.1"
 winit = { version = "=0.29.15", features = ["rwh_05"] }
-wry = { version = "0.53.5", features = ["devtools", "fullscreen"] }
+wry = { version = "0.53.5", features = ["devtools", "fullscreen", "x11"] }
 serde_json = "1"
 pixels = "0.15"
 softbuffer = "0.4"
