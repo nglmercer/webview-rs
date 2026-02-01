@@ -13,6 +13,7 @@ use std::sync::Mutex;
 // Debug logging macro - set to false to disable debug output
 const DEBUG_ENABLED: bool = false;
 
+#[allow(unused_macros)]
 macro_rules! debug_log {
     ($($arg:tt)*) => {
         if DEBUG_ENABLED {

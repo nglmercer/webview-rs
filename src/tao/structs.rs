@@ -476,13 +476,6 @@ impl EventLoopBuilder {
 
     // Handle backend selection BEFORE creating the event loop
     // This ensures the environment is set up correctly before tao selects the backend
-    #[cfg(any(
-      target_os = "linux",
-      target_os = "dragonfly",
-      target_os = "freebsd",
-      target_os = "netbsd",
-      target_os = "openbsd"
-    ))]
     let event_loop = self
       .inner
       .take()
