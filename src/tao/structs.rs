@@ -352,6 +352,13 @@ impl EventLoop {
   /// Creates a new event loop.
   #[napi(constructor)]
   pub fn new() -> Result<Self> {
+    // Force X11 backend on Linux before creating the event loop
+    // This must happen BEFORE the event loop is created to prevent Wayland protocol errors
+    #[cfg(target_os = "linux")]
+    {
+      let _ = crate::tao::platform::platform_info();
+    }
+
     // On Linux, GTK can only be initialized once per process.
     // Attempting to create a second EventLoop will cause a panic with:
     // "Failed to initialize gtk backend!: Error { domain: g-io-error-quark, code: 2,
@@ -460,6 +467,13 @@ impl EventLoopBuilder {
   /// Builds the event loop.
   #[napi]
   pub fn build(&mut self) -> Result<EventLoop> {
+    // Force X11 backend on Linux before creating the event loop
+    // This must happen BEFORE the event loop is created to prevent Wayland protocol errors
+    #[cfg(target_os = "linux")]
+    {
+      let _ = crate::tao::platform::platform_info();
+    }
+
     // Handle backend selection BEFORE creating the event loop
     // This ensures the environment is set up correctly before tao selects the backend
     #[cfg(any(

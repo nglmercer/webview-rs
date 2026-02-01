@@ -379,8 +379,11 @@ fn calculate_scaled_dimensions(
       let scale = scale_x.min(scale_y);
       let scaled_width = (buffer_width as f64 * scale) as u32;
       let scaled_height = (buffer_height as f64 * scale) as u32;
-      let offset_x = (window_width - scaled_width) / 2;
-      let offset_y = (window_height - scaled_height) / 2;
+      // Clamp to window dimensions to prevent overflow
+      let scaled_width = scaled_width.min(window_width);
+      let scaled_height = scaled_height.min(window_height);
+      let offset_x = (window_width.saturating_sub(scaled_width)) / 2;
+      let offset_y = (window_height.saturating_sub(scaled_height)) / 2;
       (offset_x, offset_y, scaled_width, scaled_height)
     }
     ScaleMode::Fill => {
@@ -389,8 +392,8 @@ fn calculate_scaled_dimensions(
       let scale = scale_x.max(scale_y);
       let scaled_width = (buffer_width as f64 * scale) as u32;
       let scaled_height = (buffer_height as f64 * scale) as u32;
-      let offset_x = (window_width - scaled_width) / 2;
-      let offset_y = (window_height - scaled_height) / 2;
+      let offset_x = (window_width.saturating_sub(scaled_width)) / 2;
+      let offset_y = (window_height.saturating_sub(scaled_height)) / 2;
       (offset_x, offset_y, scaled_width, scaled_height)
     }
     ScaleMode::Integer => {
@@ -400,13 +403,13 @@ fn calculate_scaled_dimensions(
       let scale = scale.max(1);
       let scaled_width = buffer_width * scale;
       let scaled_height = buffer_height * scale;
-      let offset_x = (window_width - scaled_width) / 2;
-      let offset_y = (window_height - scaled_height) / 2;
+      let offset_x = (window_width.saturating_sub(scaled_width)) / 2;
+      let offset_y = (window_height.saturating_sub(scaled_height)) / 2;
       (offset_x, offset_y, scaled_width, scaled_height)
     }
     ScaleMode::None => {
-      let offset_x = (window_width - buffer_width) / 2;
-      let offset_y = (window_height - buffer_height) / 2;
+      let offset_x = (window_width.saturating_sub(buffer_width)) / 2;
+      let offset_y = (window_height.saturating_sub(buffer_height)) / 2;
       (offset_x, offset_y, buffer_width, buffer_height)
     }
   }

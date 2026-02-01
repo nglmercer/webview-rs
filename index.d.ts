@@ -61,11 +61,6 @@ export declare class EventLoop {
 export declare class EventLoopBuilder {
   /** Creates a new event loop builder. */
   constructor()
-  /**
-   * Forces X11 backend on Linux.
-   * This must be called before build() to take effect.
-   */
-  withForceX11(force: boolean): this
   /** Builds the event loop. */
   build(): EventLoop
 }
@@ -343,10 +338,6 @@ export declare class WindowBuilder {
   withWindowIcon(icon: Buffer): this
   /** Sets the window theme. */
   withTheme(theme: TaoTheme): this
-  /** Forces X11 backend on Linux. */
-  withForceX11(force: boolean): this
-  /** Forces Wayland backend on Linux. */
-  withForceWayland(force: boolean): this
   /** Builds the window. */
   build(eventLoop: EventLoop): Window
 }
@@ -1477,8 +1468,6 @@ export interface WindowAttributes {
   icon?: Buffer
   /** The theme of window. */
   theme?: TaoTheme
-  /** Whether to force X11 backend on Linux (default: auto-detect) */
-  forceX11?: boolean
 }
 
 /** Window drag details. */
@@ -1577,8 +1566,6 @@ export interface WindowOptions {
   icon?: Buffer
   /** The theme of window. */
   theme?: TaoTheme
-  /** Whether to force X11 backend on Linux (default: auto-detect) */
-  forceX11?: boolean
 }
 
 /** Window size limits. */

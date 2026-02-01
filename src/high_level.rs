@@ -196,6 +196,13 @@ pub struct Application {
 impl Application {
   #[napi(constructor)]
   pub fn new(_options: Option<ApplicationOptions>) -> Self {
+    // Force X11 backend on Linux before creating the event loop
+    // This must happen BEFORE the event loop is created to prevent Wayland protocol errors
+    #[cfg(target_os = "linux")]
+    {
+      let _ = crate::tao::platform::platform_info();
+    }
+
     let event_loop = tao::event_loop::EventLoop::new();
     let event_loop_proxy = event_loop.create_proxy();
     Self {
