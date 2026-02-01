@@ -1,13 +1,24 @@
-//! Simple pixel buffer rendering module
+//! Pixel renderer module
 //!
 //! Provides a minimal API for rendering RGBA pixel buffers to Tao windows.
 //! Uses X11 via pixels crate (Wayland support removed).
 
 use crate::tao::enums::ScaleMode;
+use crate::tao::render::buffer_ops::{
+  copy_buffer_centered, copy_buffer_fill, copy_buffer_scaled, CopyBufferParams,
+};
+use crate::tao::render::scaling::calculate_scaled_dimensions;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use std::cell::RefCell;
 use std::sync::Mutex;
+
+// Debug logging macro
+macro_rules! debug_log {
+    ($($arg:tt)*) => {
+        eprintln!("[PixelRenderer] {}", format!($($arg)*));
+    };
+}
 
 /// Per-window rendering state to avoid resource exhaustion
 #[cfg(target_os = "linux")]
@@ -289,8 +300,29 @@ impl PixelRenderer {
       self.scale_mode,
     );
 
+    debug_log!(
+      "render_x11_cached: buffer={}x{}, window={}x{}, scale_mode={:?}",
+      self.buffer_width,
+      self.buffer_height,
+      window_width,
+      window_height,
+      self.scale_mode
+    );
+    debug_log!(
+      "  calculated: offset=({}, {}), scaled={}x{}",
+      offset_x,
+      offset_y,
+      scaled_width,
+      scaled_height
+    );
+
     // Copy buffer to pixel frame
     let frame = state.pixels.frame_mut();
+    debug_log!(
+      "  frame.len()={}, expected={}",
+      frame.len(),
+      self.buffer_width * self.buffer_height * 4
+    );
 
     // Clear with background color first
     for pixel in frame.chunks_exact_mut(4) {
@@ -314,8 +346,19 @@ impl PixelRenderer {
           window_height,
         );
       }
+      ScaleMode::Fill => {
+        // Fill mode: scale to fill entire window, cropping if necessary
+        copy_buffer_fill(
+          frame,
+          buffer,
+          self.buffer_width,
+          self.buffer_height,
+          window_width,
+          window_height,
+        );
+      }
       _ => {
-        // Fit, Fill, Integer - copy with calculated dimensions
+        // Fit, Integer - copy with calculated dimensions
         copy_buffer_scaled(
           frame,
           buffer,
@@ -361,138 +404,6 @@ impl PixelRenderer {
   }
 }
 
-/// Calculates scaled dimensions based on the render options
-fn calculate_scaled_dimensions(
-  buffer_width: u32,
-  buffer_height: u32,
-  window_width: u32,
-  window_height: u32,
-  scale_mode: ScaleMode,
-) -> (u32, u32, u32, u32) {
-  use crate::tao::enums::ScaleMode;
-
-  match scale_mode {
-    ScaleMode::Stretch => (0, 0, window_width, window_height),
-    ScaleMode::Fit => {
-      let scale_x = window_width as f64 / buffer_width as f64;
-      let scale_y = window_height as f64 / buffer_height as f64;
-      let scale = scale_x.min(scale_y);
-      let scaled_width = (buffer_width as f64 * scale) as u32;
-      let scaled_height = (buffer_height as f64 * scale) as u32;
-      // Clamp to window dimensions to prevent overflow
-      let scaled_width = scaled_width.min(window_width);
-      let scaled_height = scaled_height.min(window_height);
-      let offset_x = (window_width.saturating_sub(scaled_width)) / 2;
-      let offset_y = (window_height.saturating_sub(scaled_height)) / 2;
-      (offset_x, offset_y, scaled_width, scaled_height)
-    }
-    ScaleMode::Fill => {
-      let scale_x = window_width as f64 / buffer_width as f64;
-      let scale_y = window_height as f64 / buffer_height as f64;
-      let scale = scale_x.max(scale_y);
-      let scaled_width = (buffer_width as f64 * scale) as u32;
-      let scaled_height = (buffer_height as f64 * scale) as u32;
-      let offset_x = (window_width.saturating_sub(scaled_width)) / 2;
-      let offset_y = (window_height.saturating_sub(scaled_height)) / 2;
-      (offset_x, offset_y, scaled_width, scaled_height)
-    }
-    ScaleMode::Integer => {
-      let scale_x = window_width as f64 / buffer_width as f64;
-      let scale_y = window_height as f64 / buffer_height as f64;
-      let scale = scale_x.min(scale_y).floor() as u32;
-      let scale = scale.max(1);
-      let scaled_width = buffer_width * scale;
-      let scaled_height = buffer_height * scale;
-      let offset_x = (window_width.saturating_sub(scaled_width)) / 2;
-      let offset_y = (window_height.saturating_sub(scaled_height)) / 2;
-      (offset_x, offset_y, scaled_width, scaled_height)
-    }
-    ScaleMode::None => {
-      let offset_x = (window_width.saturating_sub(buffer_width)) / 2;
-      let offset_y = (window_height.saturating_sub(buffer_height)) / 2;
-      (offset_x, offset_y, buffer_width, buffer_height)
-    }
-  }
-}
-
-/// Copies buffer centered without scaling
-fn copy_buffer_centered(
-  frame: &mut [u8],
-  buffer: &[u8],
-  buffer_width: u32,
-  buffer_height: u32,
-  window_width: u32,
-  window_height: u32,
-) {
-  let offset_x = ((window_width.saturating_sub(buffer_width)) / 2) as usize;
-  let offset_y = ((window_height.saturating_sub(buffer_height)) / 2) as usize;
-
-  for y in 0..buffer_height.min(window_height) {
-    let src_row_start = (y * buffer_width * 4) as usize;
-    let src_row_end = src_row_start + (buffer_width * 4) as usize;
-    let dst_row_start = ((offset_y + y as usize) * window_width as usize + offset_x) * 4;
-
-    if dst_row_start + (buffer_width * 4) as usize <= frame.len() {
-      frame[dst_row_start..dst_row_start + (buffer_width * 4) as usize]
-        .copy_from_slice(&buffer[src_row_start..src_row_end]);
-    }
-  }
-}
-
-/// Parameters for buffer copying with scaling
-struct CopyBufferParams {
-  buffer_width: u32,
-  buffer_height: u32,
-  window_width: u32,
-  window_height: u32,
-  offset_x: u32,
-  offset_y: u32,
-  scaled_width: u32,
-  scaled_height: u32,
-}
-
-/// Copies buffer with scaling (simple nearest-neighbor)
-fn copy_buffer_scaled(frame: &mut [u8], buffer: &[u8], params: CopyBufferParams) {
-  let CopyBufferParams {
-    buffer_width,
-    buffer_height,
-    window_width,
-    window_height,
-    offset_x,
-    offset_y,
-    scaled_width,
-    scaled_height,
-  } = params;
-
-  let scale_x = buffer_width as f64 / scaled_width as f64;
-  let scale_y = buffer_height as f64 / scaled_height as f64;
-
-  for y in 0..scaled_height {
-    let src_y = (y as f64 * scale_y).min(buffer_height as f64 - 1.0) as u32;
-    let dst_y = offset_y + y;
-
-    if dst_y >= window_height {
-      break;
-    }
-
-    for x in 0..scaled_width {
-      let src_x = (x as f64 * scale_x).min(buffer_width as f64 - 1.0) as u32;
-      let dst_x = offset_x + x;
-
-      if dst_x >= window_width {
-        break;
-      }
-
-      let src_idx = ((src_y * buffer_width + src_x) * 4) as usize;
-      let dst_idx = ((dst_y * window_width + dst_x) * 4) as usize;
-
-      if src_idx + 4 <= buffer.len() && dst_idx + 4 <= frame.len() {
-        frame[dst_idx..dst_idx + 4].copy_from_slice(&buffer[src_idx..src_idx + 4]);
-      }
-    }
-  }
-}
-
 /// Simple function to render a pixel buffer to a window
 ///
 /// This is a convenience function for one-off renders.
@@ -511,3 +422,6 @@ pub fn render_pixels(
   let renderer = PixelRenderer::new(buffer_width, buffer_height);
   renderer.render(window, buffer)
 }
+
+pub mod buffer_ops;
+pub mod scaling;

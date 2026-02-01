@@ -8,3 +8,6 @@ pub mod platform;
 pub mod render;
 pub mod structs;
 pub mod types;
+
+// Re-export render module items for backward compatibility
+pub use render::{render_pixels, PixelRenderer, RenderOptions};
