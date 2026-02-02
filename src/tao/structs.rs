@@ -1,3 +1,4 @@
+
 //! Tao structs
 //!
 //! This module contains all structs from the tao crate.
@@ -1159,17 +1160,14 @@ impl WindowBuilder {
 
     // Set window icon if provided
     if let Some(icon_data) = &self.attributes.icon {
-      let icon = tao::window::Icon::from_rgba(
-        icon_data.rgba.to_vec(),
-        icon_data.width,
-        icon_data.height,
-      )
-      .map_err(|e| {
-        napi::Error::new(
-          napi::Status::GenericFailure,
-          format!("Invalid icon data: {}", e),
-        )
-      })?;
+      let icon =
+        tao::window::Icon::from_rgba(icon_data.rgba.to_vec(), icon_data.width, icon_data.height)
+          .map_err(|e| {
+            napi::Error::new(
+              napi::Status::GenericFailure,
+              format!("Invalid icon data: {}", e),
+            )
+          })?;
       builder = builder.with_window_icon(Some(icon));
     }
 

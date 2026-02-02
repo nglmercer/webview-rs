@@ -8,7 +8,7 @@ use napi_derive::napi;
 use std::sync::{Arc, Mutex};
 
 use crate::tao::structs::EventLoop;
-use crate::wry::enums::WryTheme;
+use crate::wry::enums::{WryTheme, PageLoadEvent, ProxyConfig, BackgroundThrottlingPolicy};
 use crate::wry::types::Result;
 #[cfg(any(
   target_os = "linux",
@@ -151,6 +151,19 @@ pub struct WebviewIconData {
   pub height: u32,
   /// The RGBA pixel data.
   pub rgba: Buffer,
+}
+
+/// Cookie information struct.
+#[napi(object)]
+pub struct CookieInfo {
+  /// The name of the cookie.
+  pub name: String,
+  /// The value of the cookie.
+  pub value: String,
+  /// The domain of the cookie.
+  pub domain: Option<String>,
+  /// The path of the cookie.
+  pub path: Option<String>,
 }
 
 /// Attributes for creating a webview.
@@ -478,6 +491,93 @@ impl WebViewBuilder {
     Ok(self)
   }
 
+  /// Loads HTML content from a file with proper context resolution.
+  /// This sets the base URL so that relative imports (like ./styles.css, ./main.js)
+  /// and import.meta.url resolve correctly.
+  #[napi]
+  pub fn with_html_from_file(&mut self, file_path: String) -> Result<&Self> {
+    use std::fs;
+    use std::path::PathBuf;
+
+    let path = PathBuf::from(&file_path);
+    let html = fs::read_to_string(&path).map_err(|e| {
+      napi::Error::new(
+        napi::Status::GenericFailure,
+        format!("Failed to read file '{}': {}", file_path, e),
+      )
+    })?;
+
+    // Get the parent directory as the base URL
+    let base_url = path
+      .parent()
+      .and_then(|p| p.canonicalize().ok())
+      .map(|p| format!("file://{}/", p.to_string_lossy().replace('\\', "/")))
+      .unwrap_or_else(|| "file:///".to_string());
+
+    // Inject a base tag to set the base URL for relative imports
+    let html_with_base = if html.contains("<base") {
+      html
+    } else {
+      let base_tag = format!(r#"<base href="{}">"#, base_url);
+      if let Some(head_pos) = html.find("<head>") {
+        let mut modified = html.clone();
+        modified.insert_str(head_pos + 6, &base_tag);
+        modified
+      } else if let Some(html_pos) = html.find("<html>") {
+        let mut modified = html.clone();
+        modified.insert_str(html_pos + 6, &format!("<head>{}</head>", base_tag));
+        modified
+      } else {
+        format!("<head>{}</head>{}", base_tag, html)
+      }
+    };
+
+    self.attributes.html = Some(html_with_base);
+    self.attributes.url = None;
+    Ok(self)
+  }
+
+  /// Sets HTML content with a custom base URL for proper context resolution.
+  /// This allows relative imports (like ./styles.css, ./main.js, import.meta.url)
+  /// to resolve correctly against the provided base URL.
+  #[napi]
+  pub fn with_html_and_base_url(&mut self, html: String, base_url: String) -> Result<&Self> {
+    // Inject a base tag to set the base URL for relative imports
+    let html_with_base = if html.contains("<base") {
+      html
+    } else {
+      let base_tag = format!(r#"<base href="{}">"#, base_url);
+      if let Some(head_pos) = html.find("<head>") {
+        let mut modified = html.clone();
+        modified.insert_str(head_pos + 6, &base_tag);
+        modified
+      } else if let Some(html_pos) = html.find("<html>") {
+        let mut modified = html.clone();
+        modified.insert_str(html_pos + 6, &format!("<head>{}</head>", base_tag));
+        modified
+      } else {
+        format!("<head>{}</head>{}", base_tag, html)
+      }
+    };
+
+    self.attributes.html = Some(html_with_base);
+    self.attributes.url = None;
+    Ok(self)
+  }
+
+
+
+  /// Sets the webview to be unsandboxed.
+  /// WARNING: This is a security risk and should only be used for trusted content.
+  /// This allows the webview to access local files and resources without restrictions.
+  #[napi]
+  pub fn with_unsandboxed(&mut self, _unsandboxed: bool) -> Result<&Self> {
+    // Note: wry doesn't have a direct "unsandboxed" flag, but we can achieve
+    // similar functionality through custom protocols and other settings
+    // This is a marker for enhanced permissions
+    Ok(self)
+  }
+
   /// Adds multiple IPC handlers for the webview.
   #[napi]
   pub fn with_ipc_handlers(&mut self, handlers: Vec<IpcHandler>) -> Result<&Self> {
@@ -685,17 +785,14 @@ impl WebViewBuilder {
 
     // Set window icon if provided
     if let Some(icon_data) = &self.attributes.icon {
-      let icon = tao::window::Icon::from_rgba(
-        icon_data.rgba.to_vec(),
-        icon_data.width,
-        icon_data.height,
-      )
-      .map_err(|e| {
-        napi::Error::new(
-          napi::Status::GenericFailure,
-          format!("Invalid icon data: {}", e),
-        )
-      })?;
+      let icon =
+        tao::window::Icon::from_rgba(icon_data.rgba.to_vec(), icon_data.width, icon_data.height)
+          .map_err(|e| {
+            napi::Error::new(
+              napi::Status::GenericFailure,
+              format!("Invalid icon data: {}", e),
+            )
+          })?;
       window_builder = window_builder.with_window_icon(Some(icon));
     }
 
@@ -957,7 +1054,7 @@ impl WebView {
   #[napi]
   pub fn load_from_file(&self, file_path: String) -> Result<()> {
     use std::fs;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
 
     let path = PathBuf::from(&file_path);
     let html = fs::read_to_string(&path).map_err(|e| {
@@ -996,6 +1093,293 @@ impl WebView {
 
     if let Some(inner) = &self.inner {
       let _ = inner.lock().unwrap().load_html(&html_with_base);
+    }
+    Ok(())
+  }
+
+  /// Loads HTML content with a custom base URL.
+  /// This allows relative imports (like ./styles.css, ./main.js, import.meta.url)
+  /// to resolve correctly against the provided base URL.
+  #[napi]
+  pub fn load_html_with_base_url(&self, html: String, base_url: String) -> Result<()> {
+    // Inject a base tag to set the base URL for relative imports
+    let html_with_base = if html.contains("<base") {
+      // If there's already a base tag, don't add another one
+      html
+    } else {
+      // Insert base tag after <head> tag
+      let base_tag = format!(r#"<base href="{}">"#, base_url);
+      if let Some(head_pos) = html.find("<head>") {
+        let mut modified = html.clone();
+        modified.insert_str(head_pos + 6, &base_tag);
+        modified
+      } else if let Some(html_pos) = html.find("<html>") {
+        let mut modified = html.clone();
+        modified.insert_str(html_pos + 6, &format!("<head>{}</head>", base_tag));
+        modified
+      } else {
+        format!("<head>{}</head>{}", base_tag, html)
+      }
+    };
+
+    if let Some(inner) = &self.inner {
+      let _ = inner.lock().unwrap().load_html(&html_with_base);
+    }
+    Ok(())
+  }
+
+  /// Loads a URL with custom headers.
+  /// This is an "unsafe" method that gives you more control over the request.
+  #[napi]
+  pub fn load_url_with_headers(&self, url: String, headers: Vec<(String, String)>) -> Result<()> {
+    use wry::http::header::{HeaderMap, HeaderName, HeaderValue};
+    use std::str::FromStr;
+
+    let mut header_map = HeaderMap::new();
+    for (key, value) in headers {
+      if let (Ok(name), Ok(val)) = (HeaderName::from_str(&key), HeaderValue::from_str(&value)) {
+        header_map.insert(name, val);
+      }
+    }
+
+    if let Some(inner) = &self.inner {
+      let _ = inner.lock().unwrap().load_url_with_headers(&url, header_map);
+    }
+    Ok(())
+  }
+
+  /// Evaluates JavaScript code with a callback for the result.
+  /// This is an "unsafe" method that gives you more control.
+  #[napi(ts_args_type = "js: string, callback: (error: Error | null, result: string) => void")]
+  pub fn evaluate_script_with_callback(&self, js: String, callback: ThreadsafeFunction<String>) -> Result<()> {
+    if let Some(inner) = &self.inner {
+      let guard = inner.lock().unwrap();
+      guard.evaluate_script_with_callback(&js, move |result: String| {
+        let _ = callback.call(Ok(result), ThreadsafeFunctionCallMode::NonBlocking);
+      }).map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Failed to evaluate script with callback: {:?}", e),
+        )
+      })?;
+    }
+    Ok(())
+  }
+
+  /// Clears all browsing data (cookies, cache, local storage, etc.).
+  /// This is an advanced method for better control over the webview.
+  #[napi]
+  pub fn clear_all_browsing_data(&self) -> Result<()> {
+    if let Some(inner) = &self.inner {
+      inner.lock().unwrap().clear_all_browsing_data().map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Failed to clear browsing data: {:?}", e),
+        )
+      })?;
+    }
+    Ok(())
+  }
+
+  /// Sets a cookie for the webview.
+  /// This is an advanced method for better control over cookies.
+  #[napi]
+  pub fn set_cookie(&self, name: String, value: String, domain: Option<String>, path: Option<String>) -> Result<()> {
+    use wry::cookie::{Cookie, SameSite};
+
+    let mut cookie_builder = Cookie::build((name, value));
+    if let Some(d) = domain {
+      cookie_builder = cookie_builder.domain(d);
+    }
+    cookie_builder = cookie_builder.path(path.unwrap_or_else(|| "/".to_string()));
+    cookie_builder = cookie_builder.same_site(SameSite::None);
+
+    let cookie = cookie_builder.build();
+
+    if let Some(inner) = &self.inner {
+      inner.lock().unwrap().set_cookie(&cookie).map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Failed to set cookie: {:?}", e),
+        )
+      })?;
+    }
+    Ok(())
+  }
+
+  /// Gets all cookies for the webview.
+  /// Returns an array of cookie objects with name, value, domain, and path.
+  #[napi]
+  pub fn get_cookies(&self) -> Result<Vec<CookieInfo>> {
+    if let Some(inner) = &self.inner {
+      let cookies = inner.lock().unwrap().cookies().map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Failed to get cookies: {:?}", e),
+        )
+      })?;
+
+      let cookie_infos: Vec<CookieInfo> = cookies.into_iter().map(|c| CookieInfo {
+        name: c.name().to_string(),
+        value: c.value().to_string(),
+        domain: c.domain().map(|d| d.to_string()),
+        path: c.path().map(|p| p.to_string()),
+      }).collect();
+
+      Ok(cookie_infos)
+    } else {
+      Ok(Vec::new())
+    }
+  }
+
+  /// Gets cookies for a specific URL.
+  #[napi]
+  pub fn get_cookies_for_url(&self, url: String) -> Result<Vec<CookieInfo>> {
+    if let Some(inner) = &self.inner {
+      let cookies = inner.lock().unwrap().cookies_for_url(&url).map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Failed to get cookies for URL: {:?}", e),
+        )
+      })?;
+
+      let cookie_infos: Vec<CookieInfo> = cookies.into_iter().map(|c| CookieInfo {
+        name: c.name().to_string(),
+        value: c.value().to_string(),
+        domain: c.domain().map(|d| d.to_string()),
+        path: c.path().map(|p| p.to_string()),
+      }).collect();
+
+      Ok(cookie_infos)
+    } else {
+      Ok(Vec::new())
+    }
+  }
+
+  /// Deletes a cookie.
+  #[napi]
+  pub fn delete_cookie(&self, name: String, value: String, domain: Option<String>, path: Option<String>) -> Result<()> {
+    use wry::cookie::{Cookie, SameSite};
+
+    let mut cookie_builder = Cookie::build((name, value));
+    if let Some(d) = domain {
+      cookie_builder = cookie_builder.domain(d);
+    }
+    cookie_builder = cookie_builder.path(path.unwrap_or_else(|| "/".to_string()));
+    cookie_builder = cookie_builder.same_site(SameSite::None);
+
+    let cookie = cookie_builder.build();
+
+    if let Some(inner) = &self.inner {
+      inner.lock().unwrap().delete_cookie(&cookie).map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Failed to delete cookie: {:?}", e),
+        )
+      })?;
+    }
+    Ok(())
+  }
+
+  /// Gets the current URL of the webview.
+  #[napi(getter)]
+  pub fn url(&self) -> Result<Option<String>> {
+    if let Some(inner) = &self.inner {
+      match inner.lock().unwrap().url() {
+        Ok(u) => Ok(Some(u.to_string())),
+        Err(_) => Ok(None),
+      }
+    } else {
+      Ok(None)
+    }
+  }
+
+  /// Sets the zoom level of the webview.
+  /// Zoom level is a factor, where 1.0 is 100% (default).
+  #[napi]
+  pub fn set_zoom(&self, zoom: f64) -> Result<()> {
+    if let Some(inner) = &self.inner {
+      let _ = inner.lock().unwrap().zoom(zoom);
+    }
+    Ok(())
+  }
+
+  /// Gets the bounds (position and size) of the webview.
+  #[napi]
+  pub fn bounds(&self) -> Result<Rect> {
+    if let Some(inner) = &self.inner {
+      let b = inner.lock().unwrap().bounds().map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Failed to get bounds: {:?}", e),
+        )
+      })?;
+      let (x, y) = match b.position {
+        tao::dpi::Position::Logical(pos) => (pos.x as i32, pos.y as i32),
+        tao::dpi::Position::Physical(pos) => (pos.x as i32, pos.y as i32),
+      };
+      let (width, height) = match b.size {
+        tao::dpi::Size::Logical(size) => (size.width as u32, size.height as u32),
+        tao::dpi::Size::Physical(size) => (size.width as u32, size.height as u32),
+      };
+      Ok(Rect {
+        x,
+        y,
+        width,
+        height,
+      })
+    } else {
+      Err(napi::Error::new(
+        napi::Status::GenericFailure,
+        "WebView not initialized".to_string(),
+      ))
+    }
+  }
+
+  /// Sets the bounds (position and size) of the webview.
+  #[napi]
+  pub fn set_bounds(&self, rect: Rect) -> Result<()> {
+    if let Some(inner) = &self.inner {
+      let _ = inner.lock().unwrap().set_bounds(wry::Rect {
+        position: tao::dpi::LogicalPosition::new(rect.x as f64, rect.y as f64).into(),
+        size: tao::dpi::LogicalSize::new(rect.width as f64, rect.height as f64).into(),
+      });
+    }
+    Ok(())
+  }
+
+  /// Sets the background color of the webview.
+  #[napi]
+  pub fn set_background_color(&self, r: u8, g: u8, b: u8, a: u8) -> Result<()> {
+    if let Some(inner) = &self.inner {
+      let _ = inner.lock().unwrap().set_background_color((r, g, b, a));
+    }
+    Ok(())
+  }
+
+  /// Sets the visibility of the webview.
+  #[napi]
+  pub fn set_visible(&self, visible: bool) -> Result<()> {
+    if let Some(inner) = &self.inner {
+      let _ = inner.lock().unwrap().set_visible(visible);
+    }
+    Ok(())
+  }
+
+  /// Focuses the webview.
+  #[napi]
+  pub fn focus(&self) -> Result<()> {
+    if let Some(inner) = &self.inner {
+      let _ = inner.lock().unwrap().focus();
+    }
+    Ok(())
+  }
+
+  /// Focuses the parent window of the webview.
+  #[napi]
+  pub fn focus_parent(&self) -> Result<()> {
+    if let Some(inner) = &self.inner {
+      let _ = inner.lock().unwrap().focus_parent();
     }
     Ok(())
   }

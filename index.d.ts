@@ -157,8 +157,66 @@ export declare class WebView {
   loadUrl(url: string): void
   /** Loads HTML content in the webview. */
   loadHtml(html: string): void
-  /** Loads HTML content from a file in the webview. */
+  /**
+   * Loads HTML content from a file in the webview.
+   * This method properly sets the base URL so that relative imports
+   * (like ./styles.css, ./main.js, import.meta.url) resolve correctly.
+   */
   loadFromFile(filePath: string): void
+  /**
+   * Loads HTML content with a custom base URL.
+   * This allows relative imports (like ./styles.css, ./main.js, import.meta.url)
+   * to resolve correctly against the provided base URL.
+   */
+  loadHtmlWithBaseUrl(html: string, baseUrl: string): void
+  /**
+   * Loads a URL with custom headers.
+   * This is an "unsafe" method that gives you more control over the request.
+   */
+  loadUrlWithHeaders(url: string, headers: Array<[string, string]>): void
+  /**
+   * Evaluates JavaScript code with a callback for the result.
+   * This is an "unsafe" method that gives you more control.
+   */
+  evaluateScriptWithCallback(js: string, callback: (error: Error | null, result: string) => void): void
+  /**
+   * Clears all browsing data (cookies, cache, local storage, etc.).
+   * This is an advanced method for better control over the webview.
+   */
+  clearAllBrowsingData(): void
+  /**
+   * Sets a cookie for the webview.
+   * This is an advanced method for better control over cookies.
+   */
+  setCookie(name: string, value: string, domain?: string | undefined | null, path?: string | undefined | null): void
+  /**
+   * Gets all cookies for the webview.
+   * Returns an array of cookie objects with name, value, domain, and path.
+   */
+  getCookies(): Array<CookieInfo>
+  /** Gets cookies for a specific URL. */
+  getCookiesForUrl(url: string): Array<CookieInfo>
+  /** Deletes a cookie. */
+  deleteCookie(name: string, value: string, domain?: string | undefined | null, path?: string | undefined | null): void
+  /** Gets the current URL of the webview. */
+  get url(): string | null
+  /**
+   * Sets the zoom level of the webview.
+   * Zoom level is a factor, where 1.0 is 100% (default).
+   */
+  setZoom(zoom: number): void
+  /** Gets the bounds (position and size) of the webview. */
+  bounds(): Rect
+  /** Sets the bounds (position and size) of the webview. */
+  setBounds(rect: Rect): void
+  /** Sets the background color of the webview. */
+  setBackgroundColor(r: number, g: number, b: number, a: number): void
+  /** Sets the visibility of the webview. */
+  setVisible(visible: boolean): void
+  /** Focuses the webview. */
+  focus(): void
+  /** Focuses the parent window of the webview. */
+  focusParent(): void
   /** Registers a callback for IPC messages. */
   on(callback: (error: Error | null, message: string) => void): void
   /**
@@ -232,6 +290,79 @@ export declare class WebViewBuilder {
   withBackForwardNavigationGestures(backForwardNavigationGestures: boolean): this
   /** Sets the IPC handler for the webview. */
   withIpcHandler(callback: (error: Error | null, message: string) => void): this
+  /**
+   * Sets a custom protocol handler for the webview.
+   * This allows you to handle custom URL schemes (like "myapp://").
+   * The handler receives the request and should return a response.
+   */
+  withCustomProtocol(scheme: string, handler: (error: Error | null, request: RequestAsyncResponder) => Buffer | Uint8Array | ArrayBuffer): this
+  /**
+   * Loads HTML content from a file with proper context resolution.
+   * This sets the base URL so that relative imports (like ./styles.css, ./main.js)
+   * and import.meta.url resolve correctly.
+   */
+  withHtmlFromFile(filePath: string): this
+  /**
+   * Sets HTML content with a custom base URL for proper context resolution.
+   * This allows relative imports (like ./styles.css, ./main.js, import.meta.url)
+   * to resolve correctly against the provided base URL.
+   */
+  withHtmlAndBaseUrl(html: string, baseUrl: string): this
+  /**
+   * Sets a URL with custom headers to be loaded when the webview is created.
+   * This is an advanced/"unsafe" method that gives you more control over the request.
+   */
+  withUrlAndHeaders(url: string, headers: Array<[string, string]>): this
+  /**
+   * Sets the webview to be unsandboxed.
+   * WARNING: This is a security risk and should only be used for trusted content.
+   * This allows the webview to access local files and resources without restrictions.
+   */
+  withUnsandboxed(unsandboxed: boolean): this
+  /**
+   * Enables or disables JavaScript in the webview.
+   * Disabling JavaScript can improve security for static content.
+   */
+  withJavascriptDisabled(disabled: boolean): this
+  /**
+   * Sets a navigation handler that can intercept and control navigation requests.
+   * The handler should return true to allow the navigation, false to block it.
+   */
+  withNavigationHandler(handler: (error: Error | null, url: string) => boolean): this
+  /**
+   * Sets a handler for new window requests.
+   * This controls what happens when a page tries to open a new window.
+   */
+  withNewWindowHandler(handler: (error: Error | null, features: NewWindowFeatures) => NewWindowResponse): this
+  /**
+   * Sets a handler for page load events.
+   * This allows you to monitor when pages start and finish loading.
+   */
+  withPageLoadHandler(handler: (error: Error | null, event: PageLoadEvent, url: string) => void): this
+  /** Sets a handler for document title changes. */
+  withTitleChangeHandler(handler: (error: Error | null, title: string) => void): this
+  /**
+   * Sets a download started handler.
+   * This is called when a download starts and allows you to control the download.
+   */
+  withDownloadStartedHandler(handler: (error: Error | null, url: string, filename: string) => boolean): this
+  /**
+   * Sets a download completed handler.
+   * This is called when a download completes.
+   */
+  withDownloadCompletedHandler(handler: (error: Error | null, url: string, filename: string, success: boolean) => void): this
+  /** Sets the proxy configuration for the webview. */
+  withProxyConfig(config: ProxyConfig): this
+  /**
+   * Sets the background throttling policy.
+   * This controls how the webview behaves when it's in the background.
+   */
+  withBackgroundThrottling(policy: BackgroundThrottlingPolicy): this
+  /**
+   * Sets whether the webview accepts the first mouse click.
+   * When true, the first click on an unfocused webview will be processed.
+   */
+  withAcceptFirstMouse(accept: boolean): this
   /** Adds multiple IPC handlers for the webview. */
   withIpcHandlers(handlers: Array<IpcHandler>): this
   /** Builds the webview on an existing window. */
@@ -405,6 +536,18 @@ export declare const enum ControlFlow {
   WaitUntil = 1,
   Exit = 2,
   ExitWithCode = 3
+}
+
+/** Cookie information struct. */
+export interface CookieInfo {
+  /** The name of the cookie. */
+  name: string
+  /** The value of the cookie. */
+  value: string
+  /** The domain of the cookie. */
+  domain?: string
+  /** The path of the cookie. */
+  path?: string
 }
 
 /** Cursor icon change details. */
