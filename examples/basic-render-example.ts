@@ -65,7 +65,6 @@ async function main() {
       .withPosition(100, 100)
       .withResizable(true)
       .withDecorated(true)
-      .withForceX11(true)
       .withVisible(true)
       .withFocused(true)
 

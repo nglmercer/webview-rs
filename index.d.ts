@@ -157,6 +157,8 @@ export declare class WebView {
   loadUrl(url: string): void
   /** Loads HTML content in the webview. */
   loadHtml(html: string): void
+  /** Loads HTML content from a file in the webview. */
+  loadFromFile(filePath: string): void
   /** Registers a callback for IPC messages. */
   on(callback: (error: Error | null, message: string) => void): void
   /**
@@ -204,8 +206,8 @@ export declare class WebViewBuilder {
   withTransparent(transparent: boolean): this
   /** Sets whether the webview has focus. */
   withFocused(focused: boolean): this
-  /** Sets the icon of the webview. */
-  withIcon(icon: Buffer): this
+  /** Sets the icon of the webview with width and height. */
+  withIcon(width: number, height: number, rgba: Buffer): this
   /** Sets the theme of the webview. */
   withTheme(theme: WryTheme): this
   /** Sets the user agent of the webview. */
@@ -312,6 +314,8 @@ export declare class Window {
 export declare class WindowBuilder {
   /** Creates a new window builder. */
   constructor()
+  /** Sets the window icon with width and height. */
+  withIcon(width: number, height: number, rgba: Buffer): this
   /** Sets the window title. */
   withTitle(title: string): this
   /** Sets the window size. */
@@ -334,8 +338,8 @@ export declare class WindowBuilder {
   withFocused(focused: boolean): this
   /** Sets whether the window has a menubar. */
   withMenubar(menubar: boolean): this
-  /** Sets the window icon. */
-  withWindowIcon(icon: Buffer): this
+  /** Sets the window icon from raw RGBA data (deprecated, use with_icon instead). */
+  withWindowIcon(width: number, height: number, rgba: Buffer): this
   /** Sets the window theme. */
   withTheme(theme: TaoTheme): this
   /** Builds the window. */
@@ -1387,8 +1391,8 @@ export interface WebViewAttributes {
   transparent: boolean
   /** Whether the webview has focus. */
   focused: boolean
-  /** The icon of the webview. */
-  icon?: Buffer
+  /** The icon of the webview (width, height, rgba data). */
+  icon?: WebviewIconData
   /** The theme of the webview. */
   theme?: WryTheme
   /** The user agent of the webview. */
@@ -1411,6 +1415,16 @@ export interface WebViewAttributes {
   autoplay: boolean
   /** Whether to enable back/forward navigation gestures. */
   backForwardNavigationGestures: boolean
+}
+
+/** Webview icon data. */
+export interface WebviewIconData {
+  /** The width of the icon. */
+  width: number
+  /** The height of the icon. */
+  height: number
+  /** The RGBA pixel data. */
+  rgba: Buffer
 }
 
 export interface WebviewOptions {
@@ -1464,8 +1478,8 @@ export interface WindowAttributes {
   focused: boolean
   /** Whether window has a menubar. */
   menubar: boolean
-  /** The icon of window. */
-  icon?: Buffer
+  /** The icon of window (width, height, rgba data). */
+  icon?: WindowIconData
   /** The theme of window. */
   theme?: TaoTheme
 }
@@ -1514,6 +1528,16 @@ export interface WindowEventData {
   event: WindowEvent
   /** The window ID. */
   windowId: number
+}
+
+/** Window icon data. */
+export interface WindowIconData {
+  /** The width of the icon. */
+  width: number
+  /** The height of the icon. */
+  height: number
+  /** The RGBA pixel data. */
+  rgba: Buffer
 }
 
 /** Window jump options. */

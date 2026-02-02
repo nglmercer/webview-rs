@@ -277,6 +277,17 @@ pub struct VideoMode {
   pub refresh_rate: u32,
 }
 
+/// Window icon data.
+#[napi(object)]
+pub struct WindowIconData {
+  /// The width of the icon.
+  pub width: u32,
+  /// The height of the icon.
+  pub height: u32,
+  /// The RGBA pixel data.
+  pub rgba: Buffer,
+}
+
 /// Window attributes.
 #[napi(object)]
 pub struct WindowAttributes {
@@ -306,8 +317,8 @@ pub struct WindowAttributes {
   pub focused: bool,
   /// Whether window has a menubar.
   pub menubar: bool,
-  /// The icon of window.
-  pub icon: Option<Buffer>,
+  /// The icon of window (width, height, rgba data).
+  pub icon: Option<WindowIconData>,
   /// The theme of window.
   pub theme: Option<TaoTheme>,
 }
@@ -963,6 +974,17 @@ impl WindowBuilder {
     })
   }
 
+  /// Sets the window icon with width and height.
+  #[napi]
+  pub fn with_icon(&mut self, width: u32, height: u32, rgba: Buffer) -> Result<&Self> {
+    self.attributes.icon = Some(WindowIconData {
+      width,
+      height,
+      rgba,
+    });
+    Ok(self)
+  }
+
   /// Sets the window title.
   #[napi]
   pub fn with_title(&mut self, title: String) -> Result<&Self> {
@@ -1042,10 +1064,14 @@ impl WindowBuilder {
     Ok(self)
   }
 
-  /// Sets the window icon.
+  /// Sets the window icon from raw RGBA data (deprecated, use with_icon instead).
   #[napi]
-  pub fn with_window_icon(&mut self, icon: Buffer) -> Result<&Self> {
-    self.attributes.icon = Some(icon);
+  pub fn with_window_icon(&mut self, width: u32, height: u32, rgba: Buffer) -> Result<&Self> {
+    self.attributes.icon = Some(WindowIconData {
+      width,
+      height,
+      rgba,
+    });
     Ok(self)
   }
 
@@ -1129,6 +1155,22 @@ impl WindowBuilder {
       if let Some(y) = self.attributes.y {
         builder = builder.with_position(tao::dpi::LogicalPosition::new(x, y));
       }
+    }
+
+    // Set window icon if provided
+    if let Some(icon_data) = &self.attributes.icon {
+      let icon = tao::window::Icon::from_rgba(
+        icon_data.rgba.to_vec(),
+        icon_data.width,
+        icon_data.height,
+      )
+      .map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Invalid icon data: {}", e),
+        )
+      })?;
+      builder = builder.with_window_icon(Some(icon));
     }
 
     // Build the window

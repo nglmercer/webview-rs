@@ -142,6 +142,17 @@ impl WebContext {
   }
 }
 
+/// Webview icon data.
+#[napi(object)]
+pub struct WebviewIconData {
+  /// The width of the icon.
+  pub width: u32,
+  /// The height of the icon.
+  pub height: u32,
+  /// The RGBA pixel data.
+  pub rgba: Buffer,
+}
+
 /// Attributes for creating a webview.
 #[napi(object)]
 pub struct WebViewAttributes {
@@ -177,8 +188,8 @@ pub struct WebViewAttributes {
   pub transparent: bool,
   /// Whether the webview has focus.
   pub focused: bool,
-  /// The icon of the webview.
-  pub icon: Option<Buffer>,
+  /// The icon of the webview (width, height, rgba data).
+  pub icon: Option<WebviewIconData>,
   /// The theme of the webview.
   pub theme: Option<WryTheme>,
   /// The user agent of the webview.
@@ -369,10 +380,14 @@ impl WebViewBuilder {
     Ok(self)
   }
 
-  /// Sets the icon of the webview.
+  /// Sets the icon of the webview with width and height.
   #[napi]
-  pub fn with_icon(&mut self, icon: Buffer) -> Result<&Self> {
-    self.attributes.icon = Some(icon);
+  pub fn with_icon(&mut self, width: u32, height: u32, rgba: Buffer) -> Result<&Self> {
+    self.attributes.icon = Some(WebviewIconData {
+      width,
+      height,
+      rgba,
+    });
     Ok(self)
   }
 
@@ -668,6 +683,22 @@ impl WebViewBuilder {
       ));
     }
 
+    // Set window icon if provided
+    if let Some(icon_data) = &self.attributes.icon {
+      let icon = tao::window::Icon::from_rgba(
+        icon_data.rgba.to_vec(),
+        icon_data.width,
+        icon_data.height,
+      )
+      .map_err(|e| {
+        napi::Error::new(
+          napi::Status::GenericFailure,
+          format!("Invalid icon data: {}", e),
+        )
+      })?;
+      window_builder = window_builder.with_window_icon(Some(icon));
+    }
+
     // Build the window
     let window = window_builder.build(el).map_err(|e| {
       napi::Error::new(
@@ -916,6 +947,55 @@ impl WebView {
   pub fn load_html(&self, html: String) -> Result<()> {
     if let Some(inner) = &self.inner {
       let _ = inner.lock().unwrap().load_html(&html);
+    }
+    Ok(())
+  }
+
+  /// Loads HTML content from a file in the webview.
+  /// This method properly sets the base URL so that relative imports
+  /// (like ./styles.css, ./main.js, import.meta.url) resolve correctly.
+  #[napi]
+  pub fn load_from_file(&self, file_path: String) -> Result<()> {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    let path = PathBuf::from(&file_path);
+    let html = fs::read_to_string(&path).map_err(|e| {
+      napi::Error::new(
+        napi::Status::GenericFailure,
+        format!("Failed to read file '{}': {}", file_path, e),
+      )
+    })?;
+
+    // Get the parent directory as the base URL
+    let base_url = path
+      .parent()
+      .and_then(|p| p.canonicalize().ok())
+      .map(|p| format!("file://{}/", p.to_string_lossy().replace('\\', "/")))
+      .unwrap_or_else(|| "file:///".to_string());
+
+    // Inject a base tag to set the base URL for relative imports
+    let html_with_base = if html.contains("<base") {
+      // If there's already a base tag, don't add another one
+      html
+    } else {
+      // Insert base tag after <head> tag
+      let base_tag = format!(r#"<base href="{}">"#, base_url);
+      if let Some(head_pos) = html.find("<head>") {
+        let mut modified = html.clone();
+        modified.insert_str(head_pos + 6, &base_tag);
+        modified
+      } else if let Some(html_pos) = html.find("<html>") {
+        let mut modified = html.clone();
+        modified.insert_str(html_pos + 6, &format!("<head>{}</head>", base_tag));
+        modified
+      } else {
+        format!("<head>{}</head>{}", base_tag, html)
+      }
+    };
+
+    if let Some(inner) = &self.inner {
+      let _ = inner.lock().unwrap().load_html(&html_with_base);
     }
     Ok(())
   }
