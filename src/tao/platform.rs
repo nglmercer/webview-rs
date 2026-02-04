@@ -70,7 +70,7 @@ impl PlatformInfo {
       }
 
       // Priority 3: Headless / Console
-      return PlatformInfo {
+      PlatformInfo {
         display_server: DisplayServer::Unknown,
         supports_transparency: false,
         supports_positioning: false,

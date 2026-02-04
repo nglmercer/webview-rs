@@ -304,9 +304,9 @@ impl PixelRenderer {
   }
 
   /// Render using an already acquired state
-  fn render_with_state<'a>(
+  fn render_with_state(
     &self,
-    state: &'a mut RenderState,
+    state: &mut RenderState,
     buffer: &[u8],
     window_width: u32,
     window_height: u32,
